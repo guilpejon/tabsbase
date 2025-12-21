@@ -21,7 +21,7 @@ module UltimateGuitar
     class ParseError < Error; end
 
     # Tab types we want to skip
-    EXCLUDED_TYPES = %w[Official Pro Power].freeze
+    EXCLUDED_TYPES = %w[Official Pro Power Video].freeze
 
     DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36".freeze
     MAX_REDIRECTS = 3
@@ -99,12 +99,13 @@ module UltimateGuitar
     end
 
     def self.select_best_tabs(tabs, min_rating: 0)
-      # Filter out excluded types and Pro URLs (some Pro tabs have nil type but /pro/ in URL)
+      # Filter out excluded types and Pro/Video URLs (some tabs have nil type but /pro/ or -video- in URL)
       eligible = tabs.reject do |t|
         EXCLUDED_TYPES.include?(t[:type]) ||
           t[:type] == "Unknown" ||
           t[:tab_url].to_s.include?("/pro/") ||
-          t[:tab_url].to_s.include?("/pro?")
+          t[:tab_url].to_s.include?("/pro?") ||
+          t[:tab_url].to_s.include?("-video-")
       end
 
       # Group by song title, instrument type, AND version name

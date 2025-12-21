@@ -155,24 +155,45 @@ module UltimateGuitar
     end
 
     def extract_pagination(page_state, current_url)
-      pagination = page_state.dig("store", "page", "data", "pagination") || {}
+      data = page_state.dig("store", "page", "data") || {}
 
-      current = pagination["current"].to_i
+      current = data["current_page"].to_i
+      total = data["page_count"].to_i
+
       current = 1 if current < 1
-
-      total = pagination["total"].to_i
       total = 1 if total < 1
 
-      pages = pagination["pages"] || []
-      next_page = pages.find { |p| p["page"].to_i == current + 1 }
-      prev_page = pages.find { |p| p["page"].to_i == current - 1 }
+      # UG pagination uses filename format: a.htm, a2.htm, a3.htm, etc.
+      next_url = current < total ? build_page_url(current_url, current + 1) : nil
+      prev_url = current > 1 ? build_page_url(current_url, current - 1) : nil
 
       {
         current: current,
         total: total,
-        next_url: next_page ? next_page["url"] : nil,
-        prev_url: prev_page ? prev_page["url"] : nil
+        next_url: next_url,
+        prev_url: prev_url
       }
+    end
+
+    # UG pagination: a.htm (page 1), a2.htm (page 2), a3.htm (page 3), etc.
+    def build_page_url(current_url, page_number)
+      uri = URI.parse(current_url)
+      path = uri.path
+
+      # Extract the letter from the path (e.g., /bands/a.htm -> "a", /bands/a2.htm -> "a")
+      if path =~ %r{/bands/([a-z0-9-]+?)(\d*)\.htm}i
+        letter = $1
+        
+        if page_number == 1
+          "#{uri.scheme}://#{uri.host}/bands/#{letter}.htm"
+        else
+          "#{uri.scheme}://#{uri.host}/bands/#{letter}#{page_number}.htm"
+        end
+      else
+        nil
+      end
+    rescue URI::InvalidURIError
+      nil
     end
   end
 end

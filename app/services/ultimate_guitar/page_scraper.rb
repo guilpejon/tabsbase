@@ -457,7 +457,7 @@ module UltimateGuitar
         tab_type: tab_type || "chords",
         content: content,
         difficulty: difficulty,
-        capo: integer_or_nil(tab_payload["capo"]),
+        capo: extract_capo(tab_payload, page_state),
         rating: rating,
         rating_count: rating_count,
         views_count: views_count,
@@ -598,6 +598,15 @@ module UltimateGuitar
         tab_payload["votes"] ||
         page_state.dig("data", "tab", "votes") ||
         page_state.dig("data", "tab_view", "count_rating")
+      )
+    end
+
+    def extract_capo(tab_payload, page_state)
+      integer_or_nil(
+        tab_payload["capo"] ||
+        page_state.dig("data", "tab", "capo") ||
+        page_state.dig("data", "tab_view", "meta", "capo") ||
+        page_state.dig("data", "tab_view", "capo")
       )
     end
 

@@ -1,6 +1,9 @@
 module UltimateGuitar
-  # Crawls a band list page (e.g., /bands/a.htm) and its pagination.
+  # Crawls a band list page (e.g., /bands/a.htm) and paginates through results.
   # For each band with tab_count >= min_tab_count, enqueues a CrawlBandJob.
+  #
+  # UG pagination format: a.htm (page 1), a2.htm (page 2), a3.htm (page 3), etc.
+  # Stops at MAX_PAGES (30) per letter.
   #
   # Usage:
   #   UltimateGuitar::CrawlBandListJob.perform_later(
@@ -50,19 +53,21 @@ module UltimateGuitar
         )
       end
 
-      # Continue to next page if available (max 50 pages per letter)
-      max_pages = 30
-      if pagination[:next_url].present? && pagination[:current] < pagination[:total] && page < max_pages
+      # Continue to next page if available (max 15 pages per letter)
+      max_pages = 15
+      if pagination[:next_url].present? && page < max_pages
+        Rails.logger.info "[UG Crawl] Continuing to page #{page + 1} of letter '#{letter}'"
+        
         # Wait before crawling next page to be polite
         CrawlBandListJob.set(wait: 5.seconds).perform_later(
-          url: absolutize_url(pagination[:next_url]),
+          url: pagination[:next_url],
           letter: letter,
           min_tab_count: min_tab_count,
-          page: pagination[:current] + 1
+          page: page + 1
         )
       else
-        reason = page >= max_pages ? "reached max #{max_pages} pages" : "#{pagination[:total]} pages"
-        Rails.logger.info "[UG Crawl] Finished crawling letter '#{letter}' (#{reason})"
+        reason = page >= max_pages ? "reached max #{max_pages} pages" : "no more pages"
+        Rails.logger.info "[UG Crawl] Finished crawling letter '#{letter}' (#{reason}, total: #{pagination[:total]} pages)"
       end
 
       # Be polite - sleep a bit before job completes
