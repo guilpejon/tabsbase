@@ -96,12 +96,8 @@ module TabsHelper
   def chord_span(chord, variant:)
     chord_escaped = ERB::Util.h(chord)
 
-    case variant
-    when :mono
-      %(<span class="text-indigo-700 font-semibold">#{chord_escaped}</span>)
-    else
-      %(<span class="inline-block rounded bg-slate-900 px-1.5 py-0.5 text-xs font-semibold text-white align-baseline">#{chord_escaped}</span>)
-    end
+    # All chords get the same black badge style for consistency
+    %(<span class="inline-block rounded bg-slate-900 px-1 py-0.5 text-xs font-semibold text-white align-baseline">#{chord_escaped}</span>)
   end
 end
 
