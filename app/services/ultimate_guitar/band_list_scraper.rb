@@ -1,0 +1,179 @@
+require "json"
+require "net/http"
+require "openssl"
+require "uri"
+require "zlib"
+require "stringio"
+require "cgi"
+
+module UltimateGuitar
+  # Scrapes the Ultimate Guitar band directory pages.
+  #
+  # Example:
+  #   result = UltimateGuitar::BandListScraper.scrape("https://www.ultimate-guitar.com/bands/a.htm")
+  #   result[:bands]       #=> [{ name: "AC/DC", url: "...", tab_count: 1234 }, ...]
+  #   result[:pagination]  #=> { current: 1, total: 5, next_url: "..." }
+  #
+  class BandListScraper
+    class Error < StandardError; end
+    class FetchError < Error; end
+    class ParseError < Error; end
+
+    DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36".freeze
+    MAX_REDIRECTS = 3
+    BASE_URL = "https://www.ultimate-guitar.com".freeze
+
+    def self.scrape(url, **kwargs)
+      new(**kwargs).scrape(url)
+    end
+
+    def initialize(user_agent: DEFAULT_USER_AGENT, timeout: 15, ssl_verify: true)
+      @user_agent = user_agent
+      @timeout = timeout
+      @ssl_verify = ssl_verify
+    end
+
+    def scrape(url)
+      uri = URI.parse(url)
+      html = fetch_html(uri)
+      page_state = extract_page_state!(html)
+
+      {
+        bands: extract_bands(page_state),
+        pagination: extract_pagination(page_state, url)
+      }
+    end
+
+    # Returns all letter URLs (a.htm through z.htm, plus 0-9.htm)
+    def self.alphabet_urls
+      letters = ("a".."z").to_a + ["0-9"]
+      letters.map { |letter| "#{BASE_URL}/bands/#{letter}.htm" }
+    end
+
+    private
+
+    attr_reader :user_agent, :timeout, :ssl_verify
+
+    def fetch_html(uri, redirects_left: MAX_REDIRECTS)
+      raise FetchError, "Unsupported URL scheme: #{uri.scheme.inspect}" unless %w[http https].include?(uri.scheme)
+
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = uri.scheme == "https"
+      configure_ssl!(http) if http.use_ssl?
+      http.open_timeout = timeout
+      http.read_timeout = timeout
+
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request["User-Agent"] = user_agent
+      request["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+      request["Accept-Language"] = "en-US,en;q=0.9"
+      request["Accept-Encoding"] = "gzip,deflate"
+      request["Referer"] = "https://www.ultimate-guitar.com/"
+
+      response = http.request(request)
+
+      case response
+      when Net::HTTPRedirection
+        raise FetchError, "Too many redirects" if redirects_left <= 0
+        location = response["location"]
+        raise FetchError, "Redirect without Location header" if location.nil?
+        return fetch_html(URI.parse(location), redirects_left: redirects_left - 1)
+      when Net::HTTPSuccess
+        return decode_body(response)
+      else
+        raise FetchError, "HTTP #{response.code} from #{uri} (#{response.message})"
+      end
+    rescue SocketError, Timeout::Error, Errno::ECONNRESET, Errno::ECONNREFUSED => e
+      raise FetchError, "Failed to fetch #{uri}: #{e.class}: #{e.message}"
+    end
+
+    def configure_ssl!(http)
+      if ssl_verify
+        store = OpenSSL::X509::Store.new
+        store.set_default_paths
+        store.flags = 0
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        http.cert_store = store
+      else
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      end
+    end
+
+    def decode_body(response)
+      body = response.body.to_s
+      encoding = response["content-encoding"].to_s.downcase
+
+      case encoding
+      when "gzip"
+        gz = Zlib::GzipReader.new(StringIO.new(body))
+        gz.read
+      when "deflate"
+        Zlib::Inflate.inflate(body)
+      else
+        body
+      end
+    rescue Zlib::Error
+      response.body.to_s
+    end
+
+    def extract_page_state!(html)
+      # UG pages embed state in: <div class="js-store" data-content="{...}">
+      html_bin = html.to_s.b
+      re = Regexp.new(
+        'class=(["\'])[^"\']*\bjs-store\b[^"\']*\1[^>]*\sdata-content=(["\'])(.*?)\2'.b,
+        Regexp::IGNORECASE | Regexp::MULTILINE
+      )
+      m = html_bin.match(re)
+      raise ParseError, "Could not find js-store data-content" unless m
+
+      encoded = m[3].to_s.force_encoding(Encoding::UTF_8)
+      decoded = CGI.unescapeHTML(encoded)
+      JSON.parse(decoded)
+    rescue JSON::ParserError => e
+      raise ParseError, "Failed to parse page state JSON: #{e.message}"
+    end
+
+    def extract_bands(page_state)
+      # The bands are typically in store.page.data.artists
+      artists = page_state.dig("store", "page", "data", "artists") || []
+
+      artists.filter_map do |artist|
+        next unless artist.is_a?(Hash)
+
+        name = artist["name"].to_s.strip
+        next if name.empty?
+
+        url = artist["artist_url"] || artist["url"]
+        tab_count = (artist["tabscount"] || artist["tab_count"]).to_i
+
+        {
+          name: name,
+          url: url,
+          tab_count: tab_count
+        }
+      end
+    end
+
+    def extract_pagination(page_state, current_url)
+      pagination = page_state.dig("store", "page", "data", "pagination") || {}
+
+      current = pagination["current"].to_i
+      current = 1 if current < 1
+
+      total = pagination["total"].to_i
+      total = 1 if total < 1
+
+      pages = pagination["pages"] || []
+      next_page = pages.find { |p| p["page"].to_i == current + 1 }
+      prev_page = pages.find { |p| p["page"].to_i == current - 1 }
+
+      {
+        current: current,
+        total: total,
+        next_url: next_page ? next_page["url"] : nil,
+        prev_url: prev_page ? prev_page["url"] : nil
+      }
+    end
+  end
+end
+

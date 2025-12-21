@@ -18,7 +18,12 @@
     <h2 class="text-lg font-medium">
       <%= @query.present? ? "Results" : "Latest tabs" %>
     </h2>
-    <p class="text-sm text-slate-600"><%= pluralize(@tabs.size, "tab") %> shown</p>
+    <p class="text-sm text-slate-600">
+      <%= number_with_delimiter(@pagy.count) %> tabs
+      <% if @pagy.pages > 1 %>
+        • Page <%= @pagy.page %> of <%= @pagy.pages %>
+      <% end %>
+    </p>
   </div>
 
   <div class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
@@ -28,7 +33,7 @@
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
               <%= link_to tab.display_name, tab_path(tab, q: @query), class: "block font-medium text-slate-900 truncate" %>
-              <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+              <div class="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-slate-600">
                 <span><%= tab.tuning.full_name %></span>
                 <% if tab.difficulty.present? %>
                   <span>• <%= tab.difficulty %></span>
@@ -37,8 +42,8 @@
                   <span>• Capo <%= tab.capo %></span>
                 <% end %>
                 <span>• <%= number_with_delimiter(tab.views_count) %> views</span>
-                <% if tab.rating.present? %>
-                  <span>• <%= tab.rating.to_f.round(2) %>/5</span>
+                <% if tab.rating.present? && !tab.rating.zero? %>
+                  <span>• <%= tab.rating.to_f.round(2) %>/5 (<%= tab.rating_count %>)</span>
                 <% end %>
               </div>
             </div>
@@ -57,6 +62,10 @@
       </div>
     <% end %>
   </div>
+
+  <% if @pagy.pages > 1 %>
+    <div class="mt-6">
+      <%= pagy_tailwind_nav(@pagy) %>
+    </div>
+  <% end %>
 </div>
-
-

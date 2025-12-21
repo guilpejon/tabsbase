@@ -157,6 +157,16 @@ GEM
       logger
     mini_mime (1.1.5)
     minitest (5.27.0)
+    mission_control-jobs (1.1.0)
+      actioncable (>= 7.1)
+      actionpack (>= 7.1)
+      activejob (>= 7.1)
+      activerecord (>= 7.1)
+      importmap-rails (>= 1.2.1)
+      irb (~> 1.13)
+      railties (>= 7.1)
+      stimulus-rails
+      turbo-rails
     msgpack (1.8.0)
     net-imap (0.5.12)
       date
@@ -188,6 +198,7 @@ GEM
     nokogiri (1.18.10-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
+    pagy (9.4.0)
     parallel (1.27.0)
     parser (3.3.10.0)
       ast (~> 2.4.1)
@@ -370,6 +381,8 @@ DEPENDENCIES
   image_processing (~> 1.2)
   importmap-rails
   kamal
+  mission_control-jobs (~> 1.1)
+  pagy (~> 9.0)
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)

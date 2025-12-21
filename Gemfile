@@ -57,3 +57,8 @@ group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 end
+
+gem "mission_control-jobs", "~> 1.1"
+
+# Pagination
+gem "pagy", "~> 9.0"

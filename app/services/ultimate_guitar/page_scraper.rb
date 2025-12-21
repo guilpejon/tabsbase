@@ -83,10 +83,12 @@ module UltimateGuitar
         tab = find_or_initialize_tab!(song, url)
         tab.tuning = tuning
         tab.instrument = instrument
+        tab.tab_type = tab_attrs[:tab_type]
         tab.content = tab_attrs[:content]
         tab.difficulty = tab_attrs[:difficulty]
         tab.capo = tab_attrs[:capo]
         tab.rating = tab_attrs[:rating]
+        tab.rating_count = tab_attrs[:rating_count]
         tab.views_count = tab_attrs[:views_count]
         tab.version_name = tab_attrs[:version_name]
         tab.source_url = url
@@ -441,30 +443,85 @@ module UltimateGuitar
       content = tab_payload.dig("wiki_tab", "content") || tab_payload["content"]
       raise ParseError, "Tab content not found in payload" if content.to_s.strip.empty?
 
-      instrument = normalize_instrument(
-        tab_payload["instrument"] ||
-        tab_payload.dig("tab", "instrument") ||
-        tab_payload.dig("meta", "instrument")
-      )
-
+      instrument = extract_instrument(tab_payload, page_state)
+      tab_type = extract_tab_type(tab_payload, page_state)
       tuning_name, tuning_strings = extract_tuning(tab_payload)
       difficulty = extract_difficulty(tab_payload, page_state)
       views_count = extract_views_count(tab_payload, page_state)
+      rating = extract_rating(tab_payload, page_state)
+      rating_count = extract_rating_count(tab_payload, page_state)
+      version_name = extract_version_name(tab_payload, page_state)
 
       {
         instrument: instrument || "guitar",
+        tab_type: tab_type || "chords",
         content: content,
         difficulty: difficulty,
         capo: integer_or_nil(tab_payload["capo"]),
-        rating: float_or_nil(tab_payload["rating"] || tab_payload.dig("rating", "value")),
+        rating: rating,
+        rating_count: rating_count,
         views_count: views_count,
-        version_name: presence(tab_payload["version_name"] || tab_payload["version"] || tab_payload["versionTitle"]),
+        version_name: version_name,
         source_url: url,
         tuning: {
           name: tuning_name || "Standard",
           strings: tuning_strings || default_strings_for(instrument || "guitar")
         }
       }
+    end
+
+    def extract_instrument(tab_payload, page_state)
+      # First try explicit instrument field
+      explicit = tab_payload["instrument"] ||
+                 tab_payload.dig("tab", "instrument") ||
+                 tab_payload.dig("meta", "instrument")
+      return normalize_instrument(explicit) if explicit.present?
+
+      # Otherwise, derive from tab type_name (e.g., "Ukulele", "Bass", "Tab", "Chords")
+      type_name = extract_type_name(tab_payload, page_state)
+      instrument_from_type(type_name)
+    end
+
+    def extract_tab_type(tab_payload, page_state)
+      type_name = extract_type_name(tab_payload, page_state)
+      tab_type_from_type(type_name)
+    end
+
+    def extract_type_name(tab_payload, page_state)
+      page_state.dig("data", "tab", "type_name") ||
+        page_state.dig("data", "tab", "type") ||
+        tab_payload["type_name"] ||
+        tab_payload["type"]
+    end
+
+    def instrument_from_type(type_name)
+      return nil if type_name.nil?
+
+      case type_name.to_s.strip.downcase
+      when "ukulele", "ukulele chords"
+        "ukulele"
+      when "bass", "bass tabs"
+        "bass"
+      when "drums", "drum", "drum tabs"
+        "drums"
+      when "tab", "tabs", "chords", "chord"
+        "guitar"
+      else
+        "guitar"
+      end
+    end
+
+    def tab_type_from_type(type_name)
+      return nil if type_name.nil?
+
+      case type_name.to_s.strip.downcase
+      when "tab", "tabs", "bass", "bass tabs", "drums", "drum", "drum tabs"
+        "tab"
+      when "chords", "chord", "ukulele", "ukulele chords"
+        "chords"
+      else
+        "chords"
+      end
     end
 
     def extract_artist_name(tab_payload, page_state)
@@ -527,6 +584,57 @@ module UltimateGuitar
       )
     end
 
+    def extract_rating(tab_payload, page_state)
+      float_or_nil(
+        tab_payload["rating"] ||
+        tab_payload.dig("rating", "value") ||
+        page_state.dig("data", "tab", "rating") ||
+        page_state.dig("data", "tab_view", "rating")
+      )
+    end
+
+    def extract_rating_count(tab_payload, page_state)
+      integer_or_nil(
+        tab_payload["votes"] ||
+        page_state.dig("data", "tab", "votes") ||
+        page_state.dig("data", "tab_view", "count_rating")
+      )
+    end
+
+    def extract_version_name(tab_payload, page_state)
+      tab_data = page_state.dig("data", "tab") || {}
+
+      # Check "part" field for names like "intro", "solo", "acoustic"
+      part = presence(tab_data["part"] || tab_payload["part"])
+      return part.capitalize if part.present?
+
+      # Check version_description for keywords
+      version_desc = tab_data["version_description"] || tab_payload["version_description"]
+      if version_desc.present?
+        extracted = extract_version_from_description(version_desc)
+        return extracted if extracted
+      end
+
+      # No meaningful version name found
+      nil
+    end
+
+    def extract_version_from_description(description)
+      return nil if description.nil? || description.empty?
+
+      desc_lower = description.to_s.downcase
+
+      # Look for common version name patterns
+      keywords = %w[acoustic solo intro outro live unplugged fingerstyle fingerpicking capo]
+      keywords.each do |keyword|
+        if desc_lower.include?(keyword)
+          return keyword.capitalize
+        end
+      end
+
+      nil
+    end
+
     def extract_tuning(tab_payload)
       raw = tab_payload["tuning"] || tab_payload.dig("meta", "tuning") || tab_payload.dig("tab", "tuning")
       return [nil, nil] if raw.nil?
@@ -572,7 +680,10 @@ module UltimateGuitar
       case instrument.to_s.downcase
       when "ukulele"
         %w[G C E A]
+      when "bass"
+        %w[E A D G]
       else
+        # guitar_tab, guitar_chords, guitar, etc.
         %w[E A D G B E]
       end
     end
