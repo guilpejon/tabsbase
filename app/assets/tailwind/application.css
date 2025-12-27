@@ -1,1 +1,89 @@
 @import "tailwindcss";
+
+/* Ensure content doesn't overflow on mobile */
+@media (max-width: 640px) {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
+  [data-tab-wrapper-target="content"] {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* Chord sheets use pre to preserve spacing, JS handles the wrapping */
+  [data-tab-wrapper-target="content"] div,
+  [data-tab-wrapper-target="content"] pre:not([data-tab-notation="true"]) {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Tab notation needs horizontal scroll */
+  [data-tab-wrapper-target="content"] pre[data-tab-notation="true"] {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Chord diagram tooltip animations */
+[data-chord-diagram-target="tooltip"] {
+  animation: chord-tooltip-in 0.15s ease-out;
+}
+
+@keyframes chord-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile panel slide-up animation */
+[data-chord-diagram-target="mobilePanel"]:not(.hidden) {
+  animation: mobile-panel-in 0.25s ease-out;
+}
+
+[data-chord-diagram-target="mobilePanel"]:not(.hidden) > div {
+  animation: mobile-panel-slide-up 0.25s ease-out;
+}
+
+@keyframes mobile-panel-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mobile-panel-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Chord span hover effect */
+[data-chord] {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+[data-chord]:hover {
+  transform: scale(1.02);
+}
+
+[data-chord]:active {
+  transform: scale(0.98);
+}
+
+/* SVG chord diagram styling */
+.chord-diagram text {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}

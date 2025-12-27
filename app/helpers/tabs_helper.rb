@@ -104,23 +104,14 @@ module TabsHelper
     # Add top margin if this block starts with a section marker
     starts_with_section = normalized.match?(SECTION_MARKERS)
     
-    # Check if content uses multiple consecutive spaces for alignment (like chord diagrams)
-    # If so, use whitespace-pre to preserve the formatting
-    # Use 6+ consecutive spaces as threshold to avoid false positives from chord progressions
-    uses_spacing_alignment = normalized.match?(/      +/) # 6+ consecutive spaces
-    
-    if uses_spacing_alignment
-      css_class = "whitespace-pre text-sm leading-6 text-slate-900 font-mono overflow-x-auto"
-    else
-      css_class = "whitespace-pre-line text-sm leading-6 text-slate-900 font-mono"
-    end
+    # All text blocks use pre-wrap for wrapping - CSS will handle mobile
+    css_class = "text-sm leading-6 text-slate-900 font-mono"
     css_class += " mt-6" if starts_with_section
 
     content_tag(
       :div,
       html,
-      class: css_class,
-      style: uses_spacing_alignment ? nil : "overflow-wrap: anywhere;"
+      class: css_class
     )
   end
 
@@ -156,7 +147,8 @@ module TabsHelper
 
     # All chords get the same black badge style for consistency
     # Using inline instead of inline-block allows better line wrapping on mobile
-    %(<span class="inline rounded bg-slate-900 px-1 py-0.5 text-xs font-semibold text-white whitespace-nowrap">#{chord_escaped}</span>)
+    # Added data-chord attribute for chord dictionary lookup
+    %(<span class="inline rounded bg-slate-900 px-1 py-0.5 text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:bg-slate-700 transition-colors" data-chord="#{chord_escaped}">#{chord_escaped}</span>)
   end
 end
 

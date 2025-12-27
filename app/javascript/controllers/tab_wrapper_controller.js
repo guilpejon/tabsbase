@@ -27,10 +27,9 @@ export default class extends Controller {
       this.processTabBlock(pre, containerWidth)
     })
     
-    // Process div elements (chord sheets / text blocks)
-    container.querySelectorAll('div').forEach(div => {
-      // Only process divs that are direct children and have content
-      if (div.parentElement === container && div.innerHTML.includes('<span')) {
+    // Process div elements with chord content (font-mono class indicates chord sheet)
+    container.querySelectorAll('div.font-mono').forEach(div => {
+      if (div.innerHTML.includes('<span')) {
         this.processChordSheet(div, containerWidth)
       }
     })
@@ -50,43 +49,43 @@ export default class extends Controller {
     // Check if this is tab notation (G|---, e|---, etc.) or chord sheet
     if (this.hasTabNotation(text)) {
       pre.innerHTML = this.wrapTabBlock(html, text, containerWidth, pre)
-      // Keep whitespace-pre for tab notation
       pre.style.whiteSpace = 'pre'
       pre.style.overflowWrap = 'normal'
-    } else if (this.usesSpacingForAlignment(text)) {
-      // Content uses multiple spaces for column alignment (like chord diagrams)
-      // Keep whitespace-pre to preserve the formatting
-      pre.style.whiteSpace = 'pre'
-      pre.style.overflowWrap = 'normal'
+      pre.dataset.tabNotation = 'true'
     } else if (html.includes('<span')) {
-      // This is a chord sheet inside a <pre> block - allow text wrapping
+      // Chord sheet - chord lines have spans, need to wrap properly
+      // Chord sheet in a pre block - wrap properly
       pre.style.whiteSpace = 'pre-wrap'
-      pre.style.overflowWrap = 'anywhere'
+      pre.style.wordBreak = 'break-word'
+      pre.style.overflowWrap = 'break-word'
+      pre.style.maxWidth = '100%'
+      pre.style.overflowX = 'hidden'
       
       const charWidth = this.measureCharWidth(pre)
       const availableWidth = containerWidth - 32
       const charsPerLine = Math.floor(availableWidth / charWidth)
       
-      if (charsPerLine > 0) {
-        const maxLen = this.maxLineLength(text.split('\n'))
-        if (charsPerLine < maxLen) {
-          pre.innerHTML = this.wrapChordSheet(html, text, charsPerLine)
-        } else {
-          // No wrapping needed - restore original
-          pre.innerHTML = html
-        }
+      if (charsPerLine > 10 && this.hasChordLyricPairStructure(html, text)) {
+        pre.innerHTML = this.wrapChordLyricPairs(html, text, charsPerLine)
+      } else {
+        pre.innerHTML = html
       }
+    } else if (this.usesSpacingForAlignment(text)) {
+      // ASCII chord diagrams - preserve spacing
+      pre.style.whiteSpace = 'pre'
+      pre.style.overflowWrap = 'normal'
     } else {
-      // Plain text in a <pre> block - allow wrapping
+      // Plain text in a <pre> block
       pre.style.whiteSpace = 'pre-wrap'
-      pre.style.overflowWrap = 'anywhere'
+      pre.style.overflowWrap = 'break-word'
     }
   }
   
   // Check if content uses multiple consecutive spaces for alignment (like chord diagrams)
   usesSpacingForAlignment(text) {
-    // If any line has 3+ consecutive spaces, it's likely using spacing for alignment
-    return /  {2,}/.test(text)
+    // Only preserve spacing for actual chord diagrams with many consecutive spaces
+    // 10+ consecutive spaces indicates a chord diagram or similar formatted content
+    return /          +/.test(text)
   }
 
   processChordSheet(div, containerWidth) {
@@ -99,29 +98,255 @@ export default class extends Controller {
     const html = div.dataset.originalHtml
     const text = div.dataset.originalText
     
-    // Only apply JS wrapping if this has clear chord-line/lyric-line pairs
-    // (where chord lines have spans and are mostly whitespace)
-    // For inline chord content, let CSS handle wrapping
-    if (!this.hasChordLyricPairStructure(html, text)) {
-      div.innerHTML = html
-      return
-    }
+    // Set styles for proper display - pre-wrap preserves whitespace AND wraps
+    div.style.whiteSpace = 'pre-wrap'
+    div.style.wordBreak = 'break-word'
+    div.style.overflowWrap = 'break-word'
+    div.style.maxWidth = '100%'
+    div.style.overflowX = 'hidden'
     
+    // Calculate available characters per line
     const charWidth = this.measureCharWidth(div)
-    const availableWidth = containerWidth - 16
+    const availableWidth = containerWidth - 20
     const charsPerLine = Math.floor(availableWidth / charWidth)
     
-    if (charsPerLine <= 0) {
-      return
-    }
-    
-    const maxLen = this.maxLineLength(text.split('\n'))
-    if (charsPerLine >= maxLen) {
+    if (charsPerLine <= 10) {
       div.innerHTML = html
       return
     }
     
-    div.innerHTML = this.wrapChordSheet(html, text, charsPerLine)
+    // Wrap chord-lyric pairs together at same break points
+    if (this.hasChordLyricPairStructure(html, text)) {
+      div.innerHTML = this.wrapChordLyricPairs(html, text, charsPerLine)
+    } else {
+      div.innerHTML = html
+    }
+  }
+  
+  // Wrap chord and lyric lines together, breaking at the same positions
+  wrapChordLyricPairs(html, text, charsPerLine) {
+    const htmlLines = html.split('\n')
+    const textLines = text.split('\n')
+    
+    const result = []
+    let i = 0
+    
+    while (i < htmlLines.length) {
+      if (this.isChordLine(htmlLines[i], textLines[i])) {
+        // Collect consecutive chord lines and merge them
+        let chordHtml = ''
+        let chordText = ''
+        
+        while (i < htmlLines.length && this.isChordLine(htmlLines[i], textLines[i])) {
+          if (chordHtml) {
+            chordHtml += ' ' + htmlLines[i]
+            chordText += ' ' + (textLines[i] || '')
+          } else {
+            chordHtml = htmlLines[i]
+            chordText = textLines[i] || ''
+          }
+          i++
+        }
+        
+        // Collect consecutive lyric lines and merge them
+        let lyricHtml = ''
+        let lyricText = ''
+        
+        while (i < htmlLines.length && 
+               !this.isChordLine(htmlLines[i], textLines[i]) &&
+               (textLines[i] || '').trim() !== '' &&
+               !this.isSectionMarker(textLines[i])) {
+          if (lyricHtml) {
+            lyricHtml += ' ' + htmlLines[i]
+            lyricText += ' ' + (textLines[i] || '')
+          } else {
+            lyricHtml = htmlLines[i]
+            lyricText = textLines[i] || ''
+          }
+          i++
+        }
+        
+        // Now wrap both together, breaking at the same character positions
+        const wrapped = this.wrapPairTogether(chordHtml, chordText, lyricHtml, lyricText, charsPerLine)
+        result.push(...wrapped)
+      } else {
+        // Regular line - just add it, wrapping if needed
+        const line = htmlLines[i]
+        const lineText = textLines[i] || ''
+        
+        if (lineText.length > charsPerLine && !this.isSectionMarker(lineText)) {
+          // Wrap plain text line
+          result.push(...this.wrapPlainLine(line, lineText, charsPerLine))
+        } else {
+          result.push(line)
+        }
+        i++
+      }
+    }
+    
+    return result.join('\n')
+  }
+  
+  // Wrap a chord line and lyric line together at the same break points
+  wrapPairTogether(chordHtml, chordText, lyricHtml, lyricText, charsPerLine) {
+    const maxLen = Math.max(chordText.length, lyricText.length)
+    
+    // If it fits, no wrapping needed
+    if (maxLen <= charsPerLine) {
+      const result = []
+      if (chordText.trim()) result.push(chordHtml)
+      if (lyricText.trim()) result.push(lyricHtml)
+      return result
+    }
+    
+    const result = []
+    let pos = 0
+    let iterations = 0
+    const maxIterations = 20 // Safety limit
+    
+    while (pos < maxLen && iterations < maxIterations) {
+      iterations++
+      
+      // Find break point (prefer word boundary in lyrics)
+      let breakAt = Math.min(pos + charsPerLine, maxLen)
+      
+      if (breakAt < maxLen) {
+        // Look for a space to break at in the lyric text
+        let searchPos = Math.min(breakAt, (lyricText.length > 0 ? lyricText.length : maxLen) - 1)
+        while (searchPos > pos && (lyricText[searchPos] !== ' ' || this.isInsideChord(chordText, searchPos))) {
+          searchPos--
+        }
+        if (searchPos > pos) {
+          breakAt = searchPos + 1
+        }
+        
+        // Also ensure we're not breaking in the middle of a chord name in the chord line
+        // Find a safe break point where chordText has a space
+        while (breakAt < maxLen && breakAt > pos + 10 && 
+               chordText[breakAt - 1] !== ' ' && chordText[breakAt - 1] !== undefined &&
+               !/\s/.test(chordText[breakAt - 1])) {
+          breakAt--
+        }
+      }
+      
+      // Extract chord segment (trim leading/trailing whitespace for cleaner display)
+      let chordSegment = this.extractHtmlSegment(chordHtml, chordText, pos, breakAt)
+      // Extract lyric segment  
+      let lyricSegment = this.extractHtmlSegment(lyricHtml, lyricText, pos, breakAt)
+      
+      // Trim segments - especially important for wrapped chord lines that have leading spaces
+      chordSegment = chordSegment.replace(/^\s+/, '').replace(/\s+$/, '')
+      lyricSegment = lyricSegment.trim()
+      
+      if (chordSegment) result.push(chordSegment)
+      if (lyricSegment) result.push(lyricSegment)
+      
+      // Make sure we always advance
+      if (breakAt <= pos) {
+        breakAt = pos + charsPerLine
+      }
+      pos = breakAt
+    }
+    
+    return result
+  }
+  
+  // Extract a segment of HTML based on text character positions
+  extractHtmlSegment(html, text, start, end) {
+    if (start >= text.length) return ''
+    
+    // If no HTML tags, just slice the text
+    if (!html.includes('<')) {
+      return text.substring(start, Math.min(end, text.length))
+    }
+    
+    // Parse through HTML, tracking text position
+    let result = ''
+    let textPos = 0
+    let htmlPos = 0
+    let pendingSpans = [] // Spans that started before our range
+    let openSpansInResult = 0
+    
+    while (htmlPos < html.length) {
+      const char = html[htmlPos]
+      
+      if (char === '<') {
+        const tagEnd = html.indexOf('>', htmlPos)
+        if (tagEnd === -1) break
+        
+        const tag = html.substring(htmlPos, tagEnd + 1)
+        const isClose = tag.startsWith('</')
+        
+        if (isClose && tag.includes('span')) {
+          if (textPos > start && textPos <= end && openSpansInResult > 0) {
+            result += tag
+            openSpansInResult--
+          }
+          if (pendingSpans.length > 0) {
+            pendingSpans.pop()
+          }
+        } else if (tag.startsWith('<span')) {
+          if (textPos < start) {
+            // Span starts before our range - save it in case content enters range
+            pendingSpans.push(tag)
+          } else if (textPos >= start && textPos < end) {
+            result += tag
+            openSpansInResult++
+          }
+        }
+        
+        htmlPos = tagEnd + 1
+      } else {
+        // Regular character
+        if (textPos >= start && textPos < end) {
+          // If we haven't output anything yet and there are pending spans, add them
+          if (result === '' && pendingSpans.length > 0) {
+            result = pendingSpans.join('')
+            openSpansInResult = pendingSpans.length
+          }
+          result += char
+        }
+        textPos++
+        htmlPos++
+      }
+    }
+    
+    // Close any open spans
+    while (openSpansInResult > 0) {
+      result += '</span>'
+      openSpansInResult--
+    }
+    
+    return result
+  }
+  
+  // Wrap a plain text line (no chord pairing)
+  wrapPlainLine(html, text, charsPerLine) {
+    if (text.length <= charsPerLine) return [html]
+    
+    const result = []
+    let pos = 0
+    
+    while (pos < text.length) {
+      let breakAt = pos + charsPerLine
+      
+      if (breakAt < text.length) {
+        let searchPos = breakAt
+        while (searchPos > pos && text[searchPos] !== ' ') {
+          searchPos--
+        }
+        if (searchPos > pos) {
+          breakAt = searchPos + 1
+        }
+      } else {
+        breakAt = text.length
+      }
+      
+      result.push(this.extractHtmlSegment(html, text, pos, breakAt))
+      pos = breakAt
+    }
+    
+    return result
   }
   
   // Check if content has chord-line/lyric-line pair structure
@@ -160,30 +385,45 @@ export default class extends Controller {
     while (i < htmlLines.length) {
       // Check if current line is a chord line
       if (this.isChordLine(htmlLines[i], textLines[i])) {
-        const chordHtml = htmlLines[i]
-        const chordText = textLines[i] || ''
-        i++
+        // Collect ALL consecutive chord lines and ALL consecutive lyric lines that follow
+        let chordHtmlParts = []
+        let chordTextParts = []
         
-        // Get the lyric line that follows (if any)
-        let lyricHtml = ''
-        let lyricText = ''
-        
-        if (i < htmlLines.length && 
-            !this.isChordLine(htmlLines[i], textLines[i]) &&
-            (textLines[i] || '').trim() !== '' &&
-            !this.isSectionMarker(textLines[i])) {
-          lyricHtml = htmlLines[i]
-          lyricText = textLines[i] || ''
+        // Gather consecutive chord lines
+        while (i < htmlLines.length && this.isChordLine(htmlLines[i], textLines[i])) {
+          chordHtmlParts.push(htmlLines[i])
+          chordTextParts.push(textLines[i] || '')
           i++
         }
         
+        // Gather consecutive lyric lines (until next chord line, section marker, or empty line)
+        let lyricHtmlParts = []
+        let lyricTextParts = []
+        
+        while (i < htmlLines.length && 
+               !this.isChordLine(htmlLines[i], textLines[i]) &&
+               (textLines[i] || '').trim() !== '' &&
+               !this.isSectionMarker(textLines[i])) {
+          lyricHtmlParts.push(htmlLines[i])
+          lyricTextParts.push(textLines[i] || '')
+          i++
+        }
+        
+        // Merge the chord lines and lyric lines
+        // For proper wrapping, we need to combine them back into single lines
+        // Use consistent separator (space) for both HTML and text
+        const mergedChordHtml = chordHtmlParts.join(' ')
+        const mergedChordText = chordTextParts.join(' ')
+        const mergedLyricHtml = lyricHtmlParts.join(' ')
+        const mergedLyricText = lyricTextParts.join(' ')
+        
         // Wrap chord+lyric pair together
-        if (lyricHtml) {
-          const wrapped = this.wrapChordLyricPair(chordHtml, chordText, lyricHtml, lyricText, charsPerLine)
+        if (mergedLyricHtml) {
+          const wrapped = this.wrapChordLyricPair(mergedChordHtml, mergedChordText, mergedLyricHtml, mergedLyricText, charsPerLine)
           result.push(...wrapped)
         } else {
-          // Orphan chord line - just add it
-          result.push(chordHtml)
+          // Orphan chord lines - just add them
+          chordHtmlParts.forEach(line => result.push(line))
         }
       } else {
         // Regular line (section marker, empty, or lyric without chord)
@@ -198,6 +438,13 @@ export default class extends Controller {
   isSectionMarker(text) {
     if (!text) return false
     return /^\s*\[(?:Verse|Chorus|Bridge|Break|Intro|Outro)/i.test(text)
+  }
+  
+  // Check if a position is inside a chord (non-space character after a non-space)
+  isInsideChord(chordText, pos) {
+    if (!chordText || pos <= 0 || pos >= chordText.length) return false
+    // We're inside a chord if the current char is not a space AND the previous char is not a space
+    return chordText[pos] !== ' ' && chordText[pos - 1] !== ' '
   }
 
   isChordLine(html, text) {
