@@ -18,3 +18,4 @@ class Tuning < ApplicationRecord
     "#{name} (#{display_strings})"
   end
 end
+

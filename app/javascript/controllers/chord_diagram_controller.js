@@ -4,9 +4,11 @@ import { getChordData, chordExists, getChordRoot, NOTE_SEMITONES } from "chord_d
 // Handles chord diagram display on hover (desktop) and tap (mobile)
 // Shows guitar, ukulele, cavaquinho, or piano chord diagrams
 export default class extends Controller {
-  static targets = ["tooltip", "mobilePanel", "instrumentSelector"]
+  static targets = ["tooltip", "mobilePanel", "instrumentSelector", "dictionaryHeader", "dictionaryArrow", "dictionaryContent", "dictionaryGrid", "dictionaryChord", "mobileDictionaryHeader", "mobileDictionaryArrow", "mobileDictionaryContent"]
   static values = {
-    instrument: { type: String, default: "guitar" }
+    instrument: { type: String, default: "guitar" },
+    dictionaryCollapsed: { type: Boolean, default: false },
+    mobileDictionaryCollapsed: { type: Boolean, default: false }
   }
   
   connect() {
@@ -29,6 +31,27 @@ export default class extends Controller {
       this.instrumentValue = savedInstrument
       this.updateInstrumentSelector()
     }
+    
+    // Load desktop dictionary collapsed state
+    const dictionaryCollapsed = localStorage.getItem("chordDictionaryCollapsed")
+    if (dictionaryCollapsed === "true") {
+      this.dictionaryCollapsedValue = true
+      this.updateDictionaryCollapsedState()
+    }
+    
+    // Load mobile dictionary collapsed state (defaults to expanded)
+    const mobileDictionaryCollapsed = localStorage.getItem("mobileDictionaryCollapsed")
+    if (mobileDictionaryCollapsed === "true") {
+      // User previously collapsed it, keep it collapsed
+      this.mobileDictionaryCollapsedValue = true
+      this.updateMobileDictionaryCollapsedState()
+    }
+    // Otherwise, mobile stays expanded by default (CSS handles initial state)
+    
+    // Render chord dictionary - use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      this.renderDictionary()
+    })
   }
   
   disconnect() {
@@ -55,7 +78,14 @@ export default class extends Controller {
   }
   
   // Find the chord element from the event target (handles nested elements)
+  // Returns null for chords inside the dictionary (they shouldn't trigger tooltips)
   findChordElement(target) {
+    // First check if target is inside a dictionary section
+    if (target.closest('[data-chord-diagram-target="dictionaryChord"]') ||
+        target.closest('[data-chord-diagram-target="dictionaryGrid"]')) {
+      return null
+    }
+    
     // Walk up the DOM to find element with data-chord
     while (target && target !== this.element) {
       if (target.dataset && target.dataset.chord) {
@@ -245,36 +275,331 @@ export default class extends Controller {
           }
         }
       }
+      
+      // Re-render the chord dictionary
+      this.renderDictionary()
     }
   }
   
-  updateInstrumentSelector() {
-    if (this.hasInstrumentSelectorTarget) {
-      const buttons = this.instrumentSelectorTarget.querySelectorAll("[data-instrument]")
-      buttons.forEach(btn => {
-        if (btn.dataset.instrument === this.instrumentValue) {
-          btn.classList.add("bg-slate-900", "text-white")
-          btn.classList.remove("bg-white", "text-slate-600", "hover:bg-slate-100")
-        } else {
-          btn.classList.remove("bg-slate-900", "text-white")
-          btn.classList.add("bg-white", "text-slate-600", "hover:bg-slate-100")
-        }
-      })
+  toggleDictionary() {
+    this.dictionaryCollapsedValue = !this.dictionaryCollapsedValue
+    localStorage.setItem("chordDictionaryCollapsed", this.dictionaryCollapsedValue)
+    this.updateDictionaryCollapsedState()
+  }
+  
+  toggleMobileDictionary() {
+    this.mobileDictionaryCollapsedValue = !this.mobileDictionaryCollapsedValue
+    localStorage.setItem("mobileDictionaryCollapsed", this.mobileDictionaryCollapsedValue)
+    this.updateMobileDictionaryCollapsedState()
+  }
+  
+  updateDictionaryCollapsedState() {
+    // Update desktop arrow elements only
+    const arrows = this.element.querySelectorAll('[data-chord-diagram-target="dictionaryArrow"]')
+    arrows.forEach(arrow => {
+      if (this.dictionaryCollapsedValue) {
+        arrow.style.transform = "rotate(0deg)"
+      } else {
+        arrow.style.transform = "rotate(90deg)"
+      }
+    })
+    
+    // Update desktop content elements only
+    const contents = this.element.querySelectorAll('[data-chord-diagram-target="dictionaryContent"]')
+    contents.forEach(content => {
+      if (this.dictionaryCollapsedValue) {
+        content.classList.add("hidden")
+      } else {
+        content.classList.remove("hidden")
+      }
+    })
+  }
+  
+  updateMobileDictionaryCollapsedState() {
+    // Update mobile arrow elements
+    const arrows = this.element.querySelectorAll('[data-chord-diagram-target="mobileDictionaryArrow"]')
+    arrows.forEach(arrow => {
+      if (this.mobileDictionaryCollapsedValue) {
+        arrow.style.transform = "rotate(0deg)"
+      } else {
+        arrow.style.transform = "rotate(90deg)"
+      }
+    })
+    
+    // Update mobile content elements
+    const contents = this.element.querySelectorAll('[data-chord-diagram-target="mobileDictionaryContent"]')
+    contents.forEach(content => {
+      if (this.mobileDictionaryCollapsedValue) {
+        content.classList.add("hidden")
+      } else {
+        content.classList.remove("hidden")
+      }
+    })
+  }
+  
+  renderDictionary() {
+    // Get all dictionary chord containers (works for both mobile and desktop views)
+    const chordContainers = this.element.querySelectorAll('[data-chord-diagram-target="dictionaryChord"]')
+    if (chordContainers.length === 0) return
+    
+    chordContainers.forEach(container => {
+      const chordName = container.dataset.chord
+      if (!chordName) return
+      
+      const chordData = getChordData(chordName, this.instrumentValue)
+      if (chordData) {
+        // Use mini size for dictionary
+        container.innerHTML = this.renderChordDiagramMini(chordName, chordData)
+      } else {
+        container.innerHTML = this.renderUnknownChordMini(chordName)
+      }
+    })
+  }
+  
+  renderUnknownChordMini(chordName) {
+    return `
+      <div class="flex flex-col items-center p-2">
+        <div class="font-bold text-sm mb-1">${this.escapeHtml(chordName)}</div>
+        <div class="text-xs text-slate-500 text-center">Chord diagram not available</div>
+      </div>
+    `
+  }
+  
+  renderChordDiagramMini(chordName, chordData) {
+    switch (this.instrumentValue) {
+      case "guitar":
+        return this.renderFrettedInstrumentMini(chordName, chordData, 6, ['E', 'A', 'D', 'G', 'B', 'e'])
+      case "ukulele":
+        return this.renderFrettedInstrumentMini(chordName, chordData, 4, ['G', 'C', 'E', 'A'])
+      case "cavaquinho":
+        return this.renderFrettedInstrumentMini(chordName, chordData, 4, ['D', 'G', 'B', 'D'])
+      case "piano":
+        return this.renderPianoChordMini(chordName, chordData)
+      default:
+        return this.renderFrettedInstrumentMini(chordName, chordData, 6, ['E', 'A', 'D', 'G', 'B', 'e'])
+    }
+  }
+  
+  renderFrettedInstrumentMini(chordName, chordData, numStrings, stringNames) {
+    const { frets, barreAt, startFret = 1 } = chordData
+    const numFrets = 4
+    
+    // Mini dimensions
+    const stringSpacing = 12
+    const fretSpacing = 14
+    const dotRadius = 4
+    const padding = 16
+    
+    const gridWidth = (numStrings - 1) * stringSpacing
+    const gridHeight = numFrets * fretSpacing
+    const width = gridWidth + padding * 2
+    const height = gridHeight + 50
+    
+    const offsetX = padding
+    const offsetY = 32
+    
+    let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" class="chord-diagram">`
+    
+    // Chord name
+    svg += `<text x="${width/2}" y="12" text-anchor="middle" font-weight="bold" font-size="11" fill="#1e293b">${this.escapeHtml(chordName)}</text>`
+    
+    // Fret position indicator
+    if (startFret > 1) {
+      svg += `<text x="${offsetX - 10}" y="${offsetY + fretSpacing/2 + 3}" text-anchor="middle" font-size="9" fill="#64748b">${startFret}</text>`
     }
     
-    // Also update mobile panel selector if present
-    if (this.hasMobilePanelTarget) {
-      const mobileButtons = this.mobilePanelTarget.querySelectorAll("[data-instrument]")
-      mobileButtons.forEach(btn => {
-        if (btn.dataset.instrument === this.instrumentValue) {
-          btn.classList.add("bg-slate-900", "text-white")
-          btn.classList.remove("bg-white", "text-slate-600")
-        } else {
-          btn.classList.remove("bg-slate-900", "text-white")
-          btn.classList.add("bg-white", "text-slate-600")
-        }
-      })
+    // Nut or line
+    const nutY = offsetY
+    if (startFret === 1) {
+      svg += `<rect x="${offsetX - 1}" y="${nutY - 2}" width="${gridWidth + 2}" height="3" fill="#1e293b" rx="1"/>`
+    } else {
+      svg += `<line x1="${offsetX}" y1="${nutY}" x2="${offsetX + gridWidth}" y2="${nutY}" stroke="#64748b" stroke-width="1.5"/>`
     }
+    
+    // Frets
+    for (let i = 1; i <= numFrets; i++) {
+      const y = offsetY + i * fretSpacing
+      svg += `<line x1="${offsetX}" y1="${y}" x2="${offsetX + gridWidth}" y2="${y}" stroke="#cbd5e1" stroke-width="1"/>`
+    }
+    
+    // Strings
+    for (let i = 0; i < numStrings; i++) {
+      const x = offsetX + i * stringSpacing
+      const strokeWidth = numStrings === 6 ? (i < 3 ? 1.5 : 1) : (i < 2 ? 1.5 : 1)
+      svg += `<line x1="${x}" y1="${nutY}" x2="${x}" y2="${offsetY + gridHeight}" stroke="#64748b" stroke-width="${strokeWidth}"/>`
+    }
+    
+    // Barre
+    if (barreAt) {
+      const barreDisplayFret = barreAt - startFret + 1
+      if (barreDisplayFret >= 1 && barreDisplayFret <= numFrets) {
+        const barreY = offsetY + (barreDisplayFret - 0.5) * fretSpacing
+        let firstBarre = -1, lastBarre = -1
+        for (let i = 0; i < numStrings; i++) {
+          if (frets[i] === barreAt) {
+            if (firstBarre === -1) firstBarre = i
+            lastBarre = i
+          }
+        }
+        if (firstBarre !== -1 && lastBarre !== -1 && lastBarre > firstBarre) {
+          const barreExtend = dotRadius + 1
+          const barreX = offsetX + firstBarre * stringSpacing - barreExtend
+          const barreWidth = (lastBarre - firstBarre) * stringSpacing + barreExtend * 2
+          svg += `<rect x="${barreX}" y="${barreY - dotRadius}" width="${barreWidth}" height="${dotRadius * 2}" rx="${dotRadius}" fill="#1e293b"/>`
+        }
+      }
+    }
+    
+    // Dots and open/muted
+    for (let i = 0; i < numStrings; i++) {
+      const x = offsetX + i * stringSpacing
+      const fret = frets[i]
+      
+      if (fret === -1) {
+        const symbolY = offsetY - 8
+        const size = 3
+        svg += `<g transform="translate(${x}, ${symbolY})">
+          <line x1="${-size}" y1="${-size}" x2="${size}" y2="${size}" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="${size}" y1="${-size}" x2="${-size}" y2="${size}" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+        </g>`
+      } else if (fret === 0) {
+        const symbolY = offsetY - 8
+        svg += `<circle cx="${x}" cy="${symbolY}" r="3" fill="none" stroke="#64748b" stroke-width="1.5"/>`
+      } else {
+        const displayFret = fret - startFret + 1
+        if (displayFret >= 1 && displayFret <= numFrets) {
+          const y = offsetY + (displayFret - 0.5) * fretSpacing
+          const isPartOfBarre = barreAt && fret === barreAt
+          if (!isPartOfBarre) {
+            svg += `<circle cx="${x}" cy="${y}" r="${dotRadius}" fill="#1e293b"/>`
+          }
+        }
+      }
+    }
+    
+    svg += '</svg>'
+    return `<div class="flex flex-col items-center">${svg}</div>`
+  }
+  
+  renderPianoChordMini(chordName, chordData) {
+    const { notes } = chordData
+    
+    // Mini piano dimensions
+    const whiteKeyWidth = 12
+    const whiteKeyHeight = 40
+    const blackKeyWidth = 8
+    const blackKeyHeight = 25
+    
+    const NOTE_SEMITONES = {
+      'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
+      'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8,
+      'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
+    }
+    
+    const normalizeNote = (note) => note.replace(/[0-9]/g, '').trim()
+    const chordNotes = notes.map(n => normalizeNote(n))
+    const rootNote = chordNotes[0]
+    const rootSemitone = NOTE_SEMITONES[rootNote]
+    
+    const notePositions = []
+    let currentSemitone = rootSemitone
+    for (let i = 0; i < chordNotes.length; i++) {
+      const note = chordNotes[i]
+      let semitone = NOTE_SEMITONES[note]
+      if (i === 0) {
+        notePositions.push({ note, semitone })
+        currentSemitone = semitone
+      } else {
+        while (semitone <= currentSemitone) {
+          semitone += 12
+        }
+        notePositions.push({ note, semitone })
+        currentSemitone = semitone
+      }
+    }
+    
+    const minSemitone = notePositions[0].semitone
+    const maxSemitone = notePositions[notePositions.length - 1].semitone
+    const startSemitone = Math.max(0, minSemitone - 1)
+    const endSemitone = Math.max(maxSemitone + 2, startSemitone + 12)
+    
+    const keys = []
+    for (let s = startSemitone; s <= endSemitone; s++) {
+      const noteInOctave = s % 12
+      const isBlack = [1, 3, 6, 8, 10].includes(noteInOctave)
+      keys.push({ semitone: s, isBlack })
+    }
+    
+    const whiteKeys = keys.filter(k => !k.isBlack)
+    const numWhiteKeys = whiteKeys.length
+    
+    const width = numWhiteKeys * whiteKeyWidth + 10
+    const height = whiteKeyHeight + 35
+    const offsetX = 5
+    const offsetY = 22
+    
+    let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" class="chord-diagram">`
+    
+    svg += `<text x="${width/2}" y="12" text-anchor="middle" font-weight="bold" font-size="11" fill="#1e293b">${this.escapeHtml(chordName)}</text>`
+    
+    const highlightSemitones = new Set(notePositions.map(np => np.semitone))
+    
+    let whiteKeyIndex = 0
+    const whiteKeyDots = []
+    const blackKeyDots = []
+    
+    for (const key of keys) {
+      if (key.isBlack) continue
+      const x = offsetX + whiteKeyIndex * whiteKeyWidth
+      const shouldHighlight = highlightSemitones.has(key.semitone)
+      svg += `<rect x="${x}" y="${offsetY}" width="${whiteKeyWidth - 1}" height="${whiteKeyHeight}" fill="#fff" stroke="#1e293b" stroke-width="1"/>`
+      if (shouldHighlight) {
+        whiteKeyDots.push({ x: x + whiteKeyWidth/2 - 0.5, semitone: key.semitone })
+      }
+      whiteKeyIndex++
+    }
+    
+    whiteKeyIndex = 0
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      if (key.isBlack) {
+        const x = offsetX + whiteKeyIndex * whiteKeyWidth - blackKeyWidth/2 - 0.5
+        const shouldHighlight = highlightSemitones.has(key.semitone)
+        svg += `<rect x="${x}" y="${offsetY}" width="${blackKeyWidth}" height="${blackKeyHeight}" fill="#1e293b"/>`
+        if (shouldHighlight) {
+          blackKeyDots.push({ x: x + blackKeyWidth/2, semitone: key.semitone })
+        }
+      } else {
+        whiteKeyIndex++
+      }
+    }
+    
+    const dotRadius = 3
+    for (const dot of whiteKeyDots) {
+      const dotY = offsetY + whiteKeyHeight - dotRadius - 5
+      svg += `<circle cx="${dot.x}" cy="${dotY}" r="${dotRadius}" fill="#1e293b"/>`
+    }
+    for (const dot of blackKeyDots) {
+      const dotY = offsetY + blackKeyHeight - dotRadius - 3
+      svg += `<circle cx="${dot.x}" cy="${dotY}" r="${dotRadius}" fill="#fff"/>`
+    }
+    
+    svg += '</svg>'
+    return `<div class="flex flex-col items-center">${svg}</div>`
+  }
+  
+  updateInstrumentSelector() {
+    // Update all instrument selector buttons across all views (mobile dictionary, desktop dictionary, mobile panel)
+    const allButtons = this.element.querySelectorAll("[data-instrument]")
+    allButtons.forEach(btn => {
+      if (btn.dataset.instrument === this.instrumentValue) {
+        btn.classList.add("bg-slate-900", "text-white")
+        btn.classList.remove("bg-white", "text-slate-600", "hover:bg-slate-100")
+      } else {
+        btn.classList.remove("bg-slate-900", "text-white")
+        btn.classList.add("bg-white", "text-slate-600", "hover:bg-slate-100")
+      }
+    })
   }
   
   renderChordDiagram(chordName, chordData, large = false) {

@@ -758,12 +758,15 @@ export default class extends Controller {
 
   // Check if content has actual tab notation (G|---, G----, e|---, e----, |---, etc.)
   hasTabNotation(text) {
-    // Match lines starting with string letter + | or -, OR lines starting directly with |
+    // Match lines starting with string letter + optional flat (b) + optional spaces + | or -
+    // OR lines starting directly with |
     // OR lines that start with dashes/numbers (tab continuation)
-    const tabLinePattern = /^[A-Ga-g]#?[\|\-]/m
+    // OR drum tabs: CC, HH, SD, BD, RC, LT, FT, MT, HT, etc.
+    const tabLinePattern = /^[A-Ga-g][#b]?\s*[\|\-]/m
+    const drumTabPattern = /^[A-Z]{2}\s*[\|\-xo]/m
     const pipeOnlyPattern = /^\|[\-0-9]/m
     const dashLinePattern = /^[\-0-9]{3,}/m // Lines starting with 3+ dashes/numbers
-    return tabLinePattern.test(text) || pipeOnlyPattern.test(text) || dashLinePattern.test(text)
+    return tabLinePattern.test(text) || drumTabPattern.test(text) || pipeOnlyPattern.test(text) || dashLinePattern.test(text)
   }
 
   wrapTabBlock(html, originalText, containerWidth, preElement) {
@@ -813,12 +816,13 @@ export default class extends Controller {
   }
 
   getTabGroupWithHeader(lines, startIndex) {
-    const tabLinePattern = /^([A-Ga-g]#?)[\|\-]/
+    const tabLinePattern = /^([A-Ga-g][#b]?)\s*[\|\-]/
+    const drumTabPattern = /^([A-Z]{2})\s*[\|\-xo]/
     const pipeOnlyPattern = /^\|[\-0-9]/
     const dashLinePattern = /^[\-0-9]{3,}/ // Lines starting with 3+ dashes/numbers (tab continuation)
     
     // Helper to check if a line is any kind of tab line
-    const isTabLine = (line) => tabLinePattern.test(line) || pipeOnlyPattern.test(line) || dashLinePattern.test(line)
+    const isTabLine = (line) => tabLinePattern.test(line) || drumTabPattern.test(line) || pipeOnlyPattern.test(line) || dashLinePattern.test(line)
     
     let headerLines = 0
     let searchIndex = startIndex
@@ -850,6 +854,7 @@ export default class extends Controller {
     for (let i = searchIndex; i < lines.length; i++) {
       const line = lines[i]
       const match = line.match(tabLinePattern)
+      const drumMatch = line.match(drumTabPattern)
       const isPipeOnly = pipeOnlyPattern.test(line)
       const isDashLine = dashLinePattern.test(line)
       
@@ -867,6 +872,17 @@ export default class extends Controller {
           seenStrings.add(stringName)
         }
         tabGroupSize++
+      } else if (drumMatch) {
+        // Drum tab line (CC, HH, SD, BD, etc.)
+        const drumName = drumMatch[1]
+        
+        // Drums can repeat in a new group, so check if we've seen this drum before
+        if (seenStrings.has(drumName)) {
+          break
+        }
+        
+        seenStrings.add(drumName)
+        tabGroupSize++
       } else if (isPipeOnly || isDashLine) {
         // Pipe-only tab line (|---, |3-5-7, etc.) or dash-only continuation line
         isPipeOnlyGroup = true
@@ -878,7 +894,7 @@ export default class extends Controller {
         // Stop when: empty line, text line, or we've hit a reasonable limit
         if (tabGroupSize >= 4) {
           const nextLine = lines[i + 1]
-          const isNextLineTab = nextLine && (pipeOnlyPattern.test(nextLine) || dashLinePattern.test(nextLine))
+          const isNextLineTab = nextLine && (pipeOnlyPattern.test(nextLine) || dashLinePattern.test(nextLine) || drumTabPattern.test(nextLine))
           
           // Stop if next line is not a tab line
           if (!isNextLineTab) {

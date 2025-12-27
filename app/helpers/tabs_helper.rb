@@ -1,7 +1,31 @@
 module TabsHelper
   TAB_BLOCK_RE = /\[tab\](.*?)\[\/tab\]/m
   CHORD_RE = /\[ch\](.*?)\[\/ch\]/m
-  
+
+  # Check if content contains any chord tags
+  def tab_has_chords?(content)
+    return false if content.blank?
+    content.to_s.match?(CHORD_RE)
+  end
+
+  # Extract all unique chord names from content, preserving order of first appearance
+  def extract_unique_chords(content)
+    return [] if content.blank?
+    
+    chords = []
+    seen = Set.new
+    
+    content.to_s.scan(CHORD_RE) do |match|
+      chord = decode_html_entities(match[0].to_s.strip)
+      unless seen.include?(chord)
+        seen.add(chord)
+        chords << chord
+      end
+    end
+    
+    chords
+  end
+
   # Common HTML named entities that CGI.unescapeHTML doesn't handle
   HTML_ENTITIES = {
     "&rsquo;" => "'",    # Right single quote

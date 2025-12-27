@@ -1,4 +1,6 @@
-<div class="w-full pb-16" data-controller="chord-diagram">
+<% has_chords = tab_has_chords?(@tab.content) %>
+<% unique_chords = has_chords ? extract_unique_chords(@tab.content) : [] %>
+<div class="w-full pb-16" <%= 'data-controller="chord-diagram"'.html_safe if has_chords %> data-chord-diagram-chords-value="<%= unique_chords.to_json %>">
   <div class="mb-6 px-4 sm:px-0">
     <%= link_to "← Back to search", root_path(q: params[:q]), class: "text-sm text-slate-600 hover:text-slate-900" %>
 
@@ -31,51 +33,151 @@
     </div>
   </div>
 
-  <%# Instrument selector %>
-  <div class="mb-4 px-4 sm:px-0">
-    <div class="flex items-center gap-2 flex-wrap" data-chord-diagram-target="instrumentSelector">
-      <span class="text-sm text-slate-500 mr-1">Chord diagrams:</span>
-      <button type="button" 
-              class="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 bg-slate-900 text-white transition-colors"
-              data-instrument="guitar"
-              data-action="click->chord-diagram#selectInstrument">
-        🎸 <span class="hidden sm:inline">Guitar</span>
-      </button>
-      <button type="button" 
-              class="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
-              data-instrument="ukulele"
-              data-action="click->chord-diagram#selectInstrument">
-        🪕 <span class="hidden sm:inline">Ukulele</span>
-      </button>
-      <button type="button" 
-              class="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
-              data-instrument="cavaquinho"
-              data-action="click->chord-diagram#selectInstrument">
-        🪕 <span class="hidden sm:inline">Cavaquinho</span>
-      </button>
-      <button type="button" 
-              class="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
-              data-instrument="piano"
-              data-action="click->chord-diagram#selectInstrument">
-        🎹 <span class="hidden sm:inline">Piano</span>
-      </button>
+  <% if has_chords && unique_chords.any? %>
+  <%# Chord Dictionary - shown above tab content on mobile, sidebar on desktop %>
+  <div class="mb-4 px-4 sm:px-0 lg:hidden">
+    <div class="rounded-lg border border-slate-200 bg-white">
+      <%# Header with collapse toggle - starts expanded on mobile %>
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors"
+           data-action="click->chord-diagram#toggleMobileDictionary"
+           data-chord-diagram-target="mobileDictionaryHeader">
+        <h2 class="font-semibold text-slate-900">Chords</h2>
+        <svg class="w-5 h-5 text-slate-400 transition-transform" 
+             data-chord-diagram-target="mobileDictionaryArrow"
+             style="transform: rotate(90deg);"
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </div>
+      
+      <%# Instrument selector %>
+      <div class="px-4 py-2 border-b border-slate-100" data-chord-diagram-target="mobileDictionaryContent">
+        <div class="flex items-center gap-1.5 flex-wrap" data-chord-diagram-target="instrumentSelector">
+          <button type="button" 
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-slate-900 text-white transition-colors"
+                  data-instrument="guitar"
+                  data-action="click->chord-diagram#selectInstrument">
+            Guitar
+          </button>
+          <button type="button" 
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+                  data-instrument="ukulele"
+                  data-action="click->chord-diagram#selectInstrument">
+            Ukulele
+          </button>
+          <button type="button" 
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+                  data-instrument="cavaquinho"
+                  data-action="click->chord-diagram#selectInstrument">
+            Cavaquinho
+          </button>
+          <button type="button" 
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+                  data-instrument="piano"
+                  data-action="click->chord-diagram#selectInstrument">
+            Piano
+          </button>
+        </div>
+      </div>
+      
+      <%# Chord diagrams - horizontal scroll on mobile %>
+      <div class="p-3 overflow-x-auto" data-chord-diagram-target="mobileDictionaryContent">
+        <div class="flex gap-3 pb-2" data-chord-diagram-target="dictionaryGrid">
+          <% unique_chords.each do |chord| %>
+            <div class="flex-shrink-0 flex justify-center items-start"
+                 data-chord="<%= chord %>"
+                 data-chord-diagram-target="dictionaryChord">
+            </div>
+          <% end %>
+        </div>
+      </div>
     </div>
   </div>
+  <% end %>
 
-  <%# No border/padding on mobile, add them back on sm: screens %>
-  <div class="sm:rounded-lg sm:border sm:border-slate-200 bg-white px-4 sm:p-4" data-controller="tab-wrapper">
-    <div data-tab-wrapper-target="content">
-      <%= render_ug_content(@tab.content) %>
+  <%# Main content area with optional chord dictionary sidebar on desktop %>
+  <div class="flex flex-col lg:flex-row lg:gap-6">
+    <%# Tab content (main area) %>
+    <div class="flex-1 min-w-0 px-4 sm:px-0">
+      <%# No border/padding on mobile, add them back on sm: screens %>
+      <div class="sm:rounded-lg sm:border sm:border-slate-200 bg-white sm:p-4" data-controller="tab-wrapper">
+        <div data-tab-wrapper-target="content">
+          <%= render_ug_content(@tab.content) %>
+        </div>
+      </div>
     </div>
+
+    <% if has_chords && unique_chords.any? %>
+    <%# Chord Dictionary Sidebar - only visible on desktop (lg+) %>
+    <div class="hidden lg:block lg:w-80 xl:w-96 shrink-0">
+      <div class="rounded-lg border border-slate-200 bg-white sticky top-4">
+        <%# Header with collapse toggle %>
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors"
+             data-action="click->chord-diagram#toggleDictionary"
+             data-chord-diagram-target="dictionaryHeader">
+          <h2 class="font-semibold text-slate-900">Chords</h2>
+          <svg class="w-5 h-5 text-slate-400 transition-transform" 
+               data-chord-diagram-target="dictionaryArrow"
+               style="transform: rotate(90deg);"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </div>
+        
+        <%# Instrument selector %>
+        <div class="px-4 py-2 border-b border-slate-100" data-chord-diagram-target="dictionaryContent">
+          <div class="flex items-center gap-1.5 flex-wrap" data-chord-diagram-target="instrumentSelector">
+            <button type="button" 
+                    class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-slate-900 text-white transition-colors"
+                    data-instrument="guitar"
+                    data-action="click->chord-diagram#selectInstrument">
+              Guitar
+            </button>
+            <button type="button" 
+                    class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+                    data-instrument="ukulele"
+                    data-action="click->chord-diagram#selectInstrument">
+              Ukulele
+            </button>
+            <button type="button" 
+                    class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+                    data-instrument="cavaquinho"
+                    data-action="click->chord-diagram#selectInstrument">
+              Cavaquinho
+            </button>
+            <button type="button" 
+                    class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+                    data-instrument="piano"
+                    data-action="click->chord-diagram#selectInstrument">
+              Piano
+            </button>
+          </div>
+        </div>
+        
+        <%# Chord diagrams - 2 column grid %>
+        <div class="p-3 max-h-[70vh] overflow-y-auto" data-chord-diagram-target="dictionaryContent">
+          <div class="grid grid-cols-2 gap-2" data-chord-diagram-target="dictionaryGrid">
+            <% unique_chords.each do |chord| %>
+              <div class="flex justify-center items-start p-1"
+                   data-chord="<%= chord %>"
+                   data-chord-diagram-target="dictionaryChord">
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% end %>
   </div>
 
+  <% if has_chords %>
   <%# Tooltip for desktop hover %>
   <div class="hidden fixed z-50 bg-white rounded-xl shadow-2xl border border-slate-200 p-3 pointer-events-auto"
        data-chord-diagram-target="tooltip"
        style="min-width: 140px;">
   </div>
 
-  <%# Mobile bottom panel %>
+  <%# Mobile bottom panel for tapping on chords in the tab %>
   <div class="hidden fixed inset-0 z-50 bg-black/50 flex-col justify-end md:hidden"
        data-chord-diagram-target="mobilePanel"
        data-action="click->chord-diagram#closeMobilePanel">
@@ -123,4 +225,5 @@
       </div>
     </div>
   </div>
+  <% end %>
 </div>
