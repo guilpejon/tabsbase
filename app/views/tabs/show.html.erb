@@ -1,6 +1,7 @@
 <% has_chords = tab_has_chords?(@tab.content) %>
 <% unique_chords = has_chords ? extract_unique_chords(@tab.content) : [] %>
-<div class="w-full pb-16" <%= 'data-controller="chord-diagram"'.html_safe if has_chords %> data-chord-diagram-chords-value="<%= unique_chords.to_json %>">
+<% is_chord_tab = @tab.tab_type == "chords" %>
+<div class="w-full pb-16" data-controller="singer-mode<%= ' chord-diagram' if has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>">
   <div class="mb-6 px-4 sm:px-0">
     <%= link_to "← Back to search", root_path(q: params[:q]), class: "text-sm text-slate-600 hover:text-slate-900" %>
 
@@ -27,8 +28,25 @@
           <% end %>
         </div>
       </div>
-      <div class="hidden sm:block shrink-0 text-sm text-slate-500">
-        <%= @tab.created_at.to_date %>
+      <div class="flex items-center gap-3">
+        <% if @tab.tab_type == "chords" %>
+        <%# Singer Mode Toggle Button - only for chord tabs %>
+        <button type="button"
+                class="px-3 py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                data-singer-mode-target="toggleButton"
+                data-action="click->singer-mode#toggle"
+                title="Singer Mode - Hide chords & tabs">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+            </svg>
+            <span class="hidden sm:inline">Singer</span>
+          </span>
+        </button>
+        <% end %>
+        <div class="hidden sm:block shrink-0 text-sm text-slate-500">
+          <%= @tab.created_at.to_date %>
+        </div>
       </div>
     </div>
   </div>

@@ -87,3 +87,26 @@
 .chord-diagram text {
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
+
+/* ===========================================
+   Singer Mode
+   Hides chords, tabs, and musical notation
+   to show only lyrics for singers
+   =========================================== */
+
+/* Hide chord badges - the main content spans */
+.singer-mode span[data-chord] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Collapse empty lines in pre elements when chords are hidden */
+.singer-mode [data-tab-wrapper-target="content"] pre {
+  white-space: pre-line !important;
+}
+
+/* Improve readability in singer mode */
+.singer-mode [data-tab-wrapper-target="content"] {
+  font-size: 1rem;
+  line-height: 1.5;
+}

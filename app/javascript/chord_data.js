@@ -328,6 +328,10 @@ export const GUITAR_CHORDS = {
   "C#m7b5": { frets: [-1, 4, 5, 4, 5, -1], fingers: [0, 1, 3, 2, 4, 0], startFret: 4 },
   "Gm7b5": { frets: [3, -1, 3, 3, 2, -1], fingers: [2, 0, 3, 4, 1, 0] },
   "Dm7b5": { frets: [-1, -1, 0, 1, 1, 1], fingers: [0, 0, 0, 1, 1, 1] },
+  "D#m7b5": { frets: [-1, 6, 7, 6, 7, -1], fingers: [0, 1, 3, 2, 4, 0], startFret: 6 },
+  "D#m7-5": { frets: [-1, 6, 7, 6, 7, -1], fingers: [0, 1, 3, 2, 4, 0], startFret: 6 },
+  "Ebm7b5": { frets: [-1, 6, 7, 6, 7, -1], fingers: [0, 1, 3, 2, 4, 0], startFret: 6 },
+  "B-5": { frets: [-1, 2, 3, 4, 3, -1], fingers: [0, 1, 2, 4, 3, 0], startFret: 2 },
   
   // Augmented variations
   "Bbaug": { frets: [-1, 1, 0, 3, 3, 2], fingers: [0, 1, 0, 3, 4, 2] },
@@ -516,6 +520,7 @@ export const GUITAR_CHORDS = {
   "Ab/Bb": { frets: [-1, 1, 1, 1, 4, 4], fingers: [0, 1, 1, 1, 3, 4], barreAt: 1 },
   "F#m/E": { frets: [0, 2, 4, 2, 2, 2], fingers: [0, 1, 4, 2, 2, 2], barreAt: 2, startFret: 2 },
   "C#m/B": { frets: [-1, 2, 4, 6, 5, 4], fingers: [0, 1, 2, 4, 3, 1], startFret: 2 },
+  "C#m/A#": { frets: [-1, 1, 4, 6, 5, 4], fingers: [0, 1, 2, 4, 3, 1], startFret: 1 },
   "C#maj7": { frets: [-1, 4, 3, 5, 4, 4], fingers: [0, 2, 1, 4, 3, 3], startFret: 3 },
   "Db(add9)": { frets: [-1, 4, 3, 1, 4, 4], fingers: [0, 3, 2, 1, 4, 4], startFret: 1 },
   "Dm/B": { frets: [-1, 2, 3, 2, 3, 1], fingers: [0, 2, 3, 1, 4, 1] },
@@ -686,6 +691,8 @@ export const UKULELE_CHORDS = {
   "Em/D": { frets: [0, 4, 3, 2], fingers: [0, 4, 3, 2] },
   "Em/B": { frets: [0, 4, 3, 2], fingers: [0, 4, 3, 2] },
   "Em/G": { frets: [0, 4, 3, 2], fingers: [0, 4, 3, 2] },
+  "C#m/B": { frets: [1, 1, 4, 2], fingers: [1, 1, 4, 2] },
+  "C#m/A#": { frets: [1, 1, 4, 1], fingers: [1, 1, 4, 1] },
   
   // Minor 7th (extended)
   "F#m7": { frets: [2, 1, 2, 2], fingers: [2, 1, 3, 4] },
@@ -813,6 +820,11 @@ export const UKULELE_CHORDS = {
   "Em7b5": { frets: [0, 3, 3, 2], fingers: [0, 2, 3, 1] },
   "F#m7b5": { frets: [2, 1, 2, 0], fingers: [2, 1, 3, 0] },
   "Gm7b5": { frets: [0, 1, 1, 1], fingers: [0, 1, 1, 1], barreAt: 1 },
+  "C#m7b5": { frets: [0, 4, 4, 4], fingers: [0, 1, 2, 3] },
+  "D#m7b5": { frets: [2, 3, 2, 4], fingers: [1, 2, 1, 4] },
+  "D#m7-5": { frets: [2, 3, 2, 4], fingers: [1, 2, 1, 4] },
+  "Ebm7b5": { frets: [2, 3, 2, 4], fingers: [1, 2, 1, 4] },
+  "B-5": { frets: [2, 2, 2, 0], fingers: [1, 2, 3, 0] },
   
   // Sharp/flat sevenths
   "C#7": { frets: [1, 1, 1, 2], fingers: [1, 1, 1, 2], barreAt: 1 },
@@ -1157,6 +1169,10 @@ export const PIANO_CHORDS = {
   "F#m7b5": { notes: ["F#", "A", "C", "E"], semitones: [0, 3, 6, 10] },
   "Gm7b5": { notes: ["G", "Bb", "Db", "F"], semitones: [0, 3, 6, 10] },
   "C#m7b5": { notes: ["C#", "E", "G", "B"], semitones: [0, 3, 6, 10] },
+  "D#m7b5": { notes: ["D#", "F#", "A", "C#"], semitones: [0, 3, 6, 10] },
+  "D#m7-5": { notes: ["D#", "F#", "A", "C#"], semitones: [0, 3, 6, 10] },
+  "Ebm7b5": { notes: ["Eb", "Gb", "A", "Db"], semitones: [0, 3, 6, 10] },
+  "B-5": { notes: ["B", "D#", "F"], semitones: [0, 4, 6] },
   
   // 11th chords
   "Am11": { notes: ["A", "C", "E", "G", "D"], semitones: [0, 3, 7, 10, 17] },
@@ -1409,6 +1425,7 @@ export const PIANO_CHORDS = {
   "Ab/Bb": { notes: ["Bb", "Ab", "C", "Eb"], semitones: [0, 10, 14, 17] },
   "F#m/E": { notes: ["E", "F#", "A", "C#"], semitones: [0, 2, 5, 10] },
   "C#m/B": { notes: ["B", "C#", "E", "G#"], semitones: [0, 2, 5, 10] },
+  "C#m/A#": { notes: ["A#", "C#", "E", "G#"], semitones: [0, 3, 6, 11] },
   "C#maj7": { notes: ["C#", "F", "G#", "C"], semitones: [0, 4, 7, 11] },
   "Db(add9)": { notes: ["Db", "F", "Ab", "Eb"], semitones: [0, 4, 7, 14] },
   "Dm/B": { notes: ["B", "D", "F", "A"], semitones: [0, 3, 6, 10] },
@@ -1728,6 +1745,11 @@ export const CAVAQUINHO_CHORDS = {
   "Em7b5": { frets: [2, 3, 3, 0], fingers: [1, 2, 3, 0] },
   "F#m7b5": { frets: [2, 3, 2, 5], fingers: [1, 2, 1, 4] },
   "Gm7b5": { frets: [0, 1, 3, 3], fingers: [0, 1, 2, 3] },
+  "C#m7b5": { frets: [0, 4, 5, 4], fingers: [0, 1, 3, 2] },
+  "D#m7b5": { frets: [2, 3, 5, 3], fingers: [1, 2, 4, 3] },
+  "D#m7-5": { frets: [2, 3, 5, 3], fingers: [1, 2, 4, 3] },
+  "Ebm7b5": { frets: [2, 3, 5, 3], fingers: [1, 2, 4, 3] },
+  "B-5": { frets: [4, 5, 0, 0], fingers: [1, 2, 0, 0] },
   
   // Power chords (root and fifth only)
   "A5": { frets: [2, 2, -1, -1], fingers: [1, 2, 0, 0] },
@@ -1763,6 +1785,8 @@ export const CAVAQUINHO_CHORDS = {
   "Em/A": { frets: [2, 2, 3, 0], fingers: [1, 1, 2, 0] },
   "F/G": { frets: [0, 1, 2, 3], fingers: [0, 1, 2, 3] },
   "G/F#": { frets: [4, 2, 0, 4], fingers: [3, 1, 0, 4] },
+  "C#m/B": { frets: [4, 4, 5, 4], fingers: [1, 1, 2, 1], barreAt: 4, startFret: 4 },
+  "C#m/A#": { frets: [3, 4, 5, 4], fingers: [1, 2, 3, 2], startFret: 3 },
   
   // Additional voicings
   "G2": { frets: [0, 2, 0, 2], fingers: [0, 1, 0, 2] },
