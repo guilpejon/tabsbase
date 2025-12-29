@@ -1,7 +1,7 @@
 <% has_chords = tab_has_chords?(@tab.content) %>
 <% unique_chords = has_chords ? extract_unique_chords(@tab.content) : [] %>
 <% is_chord_tab = @tab.tab_type == "chords" %>
-<div class="w-full pb-16" data-controller="singer-mode<%= ' chord-diagram' if has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>">
+<div class="w-full pb-16" data-controller="singer-mode<%= ' chord-diagram' if has_chords %><%= ' transpose' if is_chord_tab && has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
   <div class="mb-6 px-4 sm:px-0">
     <%= link_to "← Back to search", root_path(q: params[:q]), class: "text-sm text-slate-600 hover:text-slate-900" %>
 
@@ -29,7 +29,46 @@
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <% if @tab.tab_type == "chords" %>
+        <% if @tab.tab_type == "chords" && has_chords %>
+        <%# Transpose Controls - only for chord tabs with chords %>
+        <div class="flex items-center gap-1.5 px-2 py-1 rounded-md border border-slate-200 bg-white">
+          <button type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded text-slate-600 hover:bg-slate-100 transition-colors font-semibold text-lg"
+                  data-action="click->transpose#transposeDown"
+                  title="Transpose down one semitone">
+            −
+          </button>
+          <div class="flex flex-col items-center min-w-[3rem]">
+            <span class="text-xs text-slate-500 leading-tight">Key</span>
+            <span class="text-sm font-semibold text-slate-900" data-transpose-target="keyDisplay">-</span>
+          </div>
+          <button type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded text-slate-600 hover:bg-slate-100 transition-colors font-semibold text-lg"
+                  data-action="click->transpose#transposeUp"
+                  title="Transpose up one semitone">
+            +
+          </button>
+          <button type="button"
+                  class="ml-1 px-2 py-1 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                  data-action="click->transpose#reset"
+                  title="Reset to original key">
+            Reset
+          </button>
+        </div>
+        <%# Singer Mode Toggle Button - only for chord tabs %>
+        <button type="button"
+                class="px-3 py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                data-singer-mode-target="toggleButton"
+                data-action="click->singer-mode#toggle"
+                title="Singer Mode - Hide chords & tabs">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+            </svg>
+            <span class="hidden sm:inline">Singer</span>
+          </span>
+        </button>
+        <% elsif @tab.tab_type == "chords" %>
         <%# Singer Mode Toggle Button - only for chord tabs %>
         <button type="button"
                 class="px-3 py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"

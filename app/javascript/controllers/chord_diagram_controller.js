@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { getChordData, chordExists, getChordRoot, NOTE_SEMITONES } from "chord_data"
+import { getChordData, chordExists, getChordRoot, NOTE_SEMITONES, transposeChord } from "chord_data"
 
 // Handles chord diagram display on hover (desktop) and tap (mobile)
 // Shows guitar, ukulele, cavaquinho, or piano chord diagrams
@@ -8,13 +8,15 @@ export default class extends Controller {
   static values = {
     instrument: { type: String, default: "guitar" },
     dictionaryCollapsed: { type: Boolean, default: false },
-    mobileDictionaryCollapsed: { type: Boolean, default: false }
+    mobileDictionaryCollapsed: { type: Boolean, default: false },
+    chords: Array
   }
   
   connect() {
     this.isMobile = window.matchMedia("(max-width: 768px)").matches
     this.currentChord = null
     this.hideTimeout = null
+    this.transposedChords = null // Will be set when transpose event fires
     
     // Listen for window resize to update mobile state
     this.resizeHandler = () => {
@@ -337,14 +339,30 @@ export default class extends Controller {
     })
   }
   
+  // Handle transpose event from transpose controller
+  handleTranspose(event) {
+    const { transposedChords } = event.detail
+    this.transposedChords = transposedChords
+    
+    // Re-render the chord dictionary with transposed chords
+    this.renderDictionary()
+  }
+  
   renderDictionary() {
     // Get all dictionary chord containers (works for both mobile and desktop views)
     const chordContainers = this.element.querySelectorAll('[data-chord-diagram-target="dictionaryChord"]')
     if (chordContainers.length === 0) return
     
-    chordContainers.forEach(container => {
-      const chordName = container.dataset.chord
+    // If we have transposed chords, use them; otherwise use the original data-chord values
+    const chordsToRender = this.transposedChords || this.chordsValue || []
+    
+    chordContainers.forEach((container, index) => {
+      // Use transposed chord if available, otherwise fall back to original
+      const chordName = chordsToRender[index] || container.dataset.chord
       if (!chordName) return
+      
+      // Update the data-chord attribute on the container
+      container.dataset.chord = chordName
       
       const chordData = getChordData(chordName, this.instrumentValue)
       if (chordData) {

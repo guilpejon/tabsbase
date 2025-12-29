@@ -1905,3 +1905,93 @@ export function getChordRoot(chordName) {
   return null
 }
 
+// Array of note names for transposition (using sharps as default)
+export const CHROMATIC_NOTES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+export const CHROMATIC_NOTES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+
+// Determine if a chord name uses flats (to maintain consistency when transposing)
+export function usesFlats(chordName) {
+  if (!chordName) return false
+  const root = getChordRoot(chordName)
+  return root && root.includes('b')
+}
+
+// Transpose a single chord name by a number of semitones
+export function transposeChord(chordName, semitones) {
+  if (!chordName || semitones === 0) return chordName
+  
+  // Handle slash chords (e.g., Am/G)
+  if (chordName.includes('/')) {
+    const [main, bass] = chordName.split('/')
+    const transposedMain = transposeChord(main, semitones)
+    const transposedBass = transposeChord(bass, semitones)
+    return `${transposedMain}/${transposedBass}`
+  }
+  
+  const root = getChordRoot(chordName)
+  if (!root) return chordName
+  
+  // Get the suffix (everything after the root note)
+  const suffix = chordName.slice(root.length)
+  
+  // Determine which chromatic scale to use based on original chord
+  const useFlats = usesFlats(chordName)
+  const chromaticNotes = useFlats ? CHROMATIC_NOTES_FLAT : CHROMATIC_NOTES_SHARP
+  
+  // Find the current semitone value of the root
+  const currentSemitone = NOTE_SEMITONES[root]
+  if (currentSemitone === undefined) return chordName
+  
+  // Calculate the new semitone value (wrap around using modulo)
+  let newSemitone = (currentSemitone + semitones) % 12
+  if (newSemitone < 0) newSemitone += 12
+  
+  // Get the new root note
+  const newRoot = chromaticNotes[newSemitone]
+  
+  return newRoot + suffix
+}
+
+// Get the key signature from the first chord or most common root
+export function detectKey(chords) {
+  if (!chords || chords.length === 0) return 'C'
+  
+  // Simple heuristic: use the first chord's root as the key
+  const firstChord = chords[0]
+  const root = getChordRoot(firstChord)
+  return root || 'C'
+}
+
+// Get all 12 possible keys for the key selector
+export function getAllKeys() {
+  return [
+    { value: 'C', label: 'C' },
+    { value: 'C#', label: 'C# / Db' },
+    { value: 'D', label: 'D' },
+    { value: 'D#', label: 'D# / Eb' },
+    { value: 'E', label: 'E' },
+    { value: 'F', label: 'F' },
+    { value: 'F#', label: 'F# / Gb' },
+    { value: 'G', label: 'G' },
+    { value: 'G#', label: 'G# / Ab' },
+    { value: 'A', label: 'A' },
+    { value: 'A#', label: 'A# / Bb' },
+    { value: 'B', label: 'B' }
+  ]
+}
+
+// Calculate semitone difference between two keys
+export function getSemitonesBetweenKeys(fromKey, toKey) {
+  const fromSemitone = NOTE_SEMITONES[fromKey]
+  const toSemitone = NOTE_SEMITONES[toKey]
+  
+  if (fromSemitone === undefined || toSemitone === undefined) return 0
+  
+  let diff = toSemitone - fromSemitone
+  // Normalize to -6 to +5 range for shortest path
+  if (diff > 6) diff -= 12
+  if (diff < -6) diff += 12
+  
+  return diff
+}
+
