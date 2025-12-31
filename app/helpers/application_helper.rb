@@ -1,6 +1,4 @@
 module ApplicationHelper
-  include Pagy::Frontend
-
   # Sanitize URL to prevent XSS (only allow http/https)
   def safe_external_url(url)
     return nil if url.blank?
@@ -10,39 +8,33 @@ module ApplicationHelper
     nil
   end
 
-  # Custom pagination nav with Tailwind styling
+  # Custom Tailwind pagination for Pagy v43
   def pagy_tailwind_nav(pagy)
-    return "" if pagy.pages < 2
+    return "".html_safe if pagy.pages < 2
 
-    html = +%(<nav class="flex items-center justify-center gap-1" aria-label="Pagination">)
+    html = +%(<nav class="flex items-center gap-1" aria-label="Pagination">)
 
     # Previous button
-    if pagy.prev
-      html << link_to("←", pagy_url_for(pagy, pagy.prev),
-        class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100",
-        aria: { label: "Previous page" })
+    if pagy.page > 1
+      html << link_to("←", url_for(page: pagy.page - 1), class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100")
     else
       html << %(<span class="px-3 py-2 text-sm text-slate-300">←</span>)
     end
 
-    # Page numbers
-    pagy.series.each do |item|
-      case item
-      when Integer
-        html << link_to(item.to_s, pagy_url_for(pagy, item),
-          class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100")
-      when String # current page
-        html << %(<span class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white">#{item}</span>)
-      when :gap
+    # Page numbers with ellipsis
+    (1..pagy.pages).each do |page_num|
+      if page_num == pagy.page
+        html << %(<span class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white">#{page_num}</span>)
+      elsif page_num == 1 || page_num == pagy.pages || (page_num >= pagy.page - 2 && page_num <= pagy.page + 2)
+        html << link_to(page_num, url_for(page: page_num), class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100")
+      elsif page_num == 2 || page_num == pagy.pages - 1
         html << %(<span class="px-2 py-2 text-slate-400">…</span>)
       end
     end
 
     # Next button
-    if pagy.next
-      html << link_to("→", pagy_url_for(pagy, pagy.next),
-        class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100",
-        aria: { label: "Next page" })
+    if pagy.page < pagy.pages
+      html << link_to("→", url_for(page: pagy.page + 1), class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100")
     else
       html << %(<span class="px-3 py-2 text-sm text-slate-300">→</span>)
     end

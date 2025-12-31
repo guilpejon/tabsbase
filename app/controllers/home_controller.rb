@@ -24,7 +24,8 @@ class HomeController < ApplicationController
       tabs = tabs.order("tabs.created_at DESC")
     end
 
-    @pagy, @tabs = pagy(tabs)
+    # Pagy v43 API: pagy(:offset, collection)
+    @pagy, @tabs = pagy(:offset, tabs)
 
     # Get available instruments for the filter
     @instruments = Tab.distinct.pluck(:instrument).compact.sort
