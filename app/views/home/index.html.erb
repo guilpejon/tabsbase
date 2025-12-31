@@ -1,9 +1,9 @@
 <div class="w-full pb-16">
-  <div class="mb-8 px-4 sm:px-0">
-    <h1 class="text-3xl font-semibold tracking-tight">Tabsbase</h1>
-    <p class="text-slate-600 mt-2">Search tabs by artist or song title.</p>
+  <div class="mb-12 px-4 sm:px-0 text-center">
+    <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900">Find your favorite tabs</h1>
+    <p class="text-lg sm:text-xl text-slate-500 mt-4 max-w-xl mx-auto">Search guitar, ukulele, and bass tabs by artist or song title.</p>
 
-    <%= form_with url: root_path, method: :get, local: true, class: "mt-6 flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto" do |f| %>
+    <%= form_with url: root_path, method: :get, local: true, class: "mt-8 flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto" do |f| %>
       <%= f.search_field :q,
         value: @query,
         placeholder: "e.g. Radiohead, Wonderwall…",

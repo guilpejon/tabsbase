@@ -24,7 +24,15 @@
   </head>
 
   <body>
-    <main class="container mx-auto mt-16 sm:mt-28 px-0 sm:px-5 flex flex-col max-w-full overflow-x-hidden">
+    <header class="sticky top-0 z-50 bg-white border-b border-slate-200">
+      <nav class="container mx-auto px-4 sm:px-5 h-14 flex items-center justify-between max-w-5xl">
+        <%= link_to root_path, class: "flex items-center gap-2 text-slate-900 hover:text-slate-600 transition-colors" do %>
+          <span class="text-xl font-semibold tracking-tight">Tabsbase</span>
+        <% end %>
+      </nav>
+    </header>
+
+    <main class="container mx-auto mt-8 sm:mt-12 px-0 sm:px-5 flex flex-col max-w-full overflow-x-hidden">
       <%= yield %>
     </main>
   </body>
