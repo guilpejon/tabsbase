@@ -46,7 +46,7 @@ module UltimateGuitar
 
     # Returns all letter URLs (a.htm through z.htm, plus 0-9.htm)
     def self.alphabet_urls
-      letters = ("a".."z").to_a + ["0-9"]
+      letters = ("a".."z").to_a + [ "0-9" ]
       letters.map { |letter| "#{BASE_URL}/bands/#{letter}.htm" }
     end
 
@@ -77,9 +77,9 @@ module UltimateGuitar
         raise FetchError, "Too many redirects" if redirects_left <= 0
         location = response["location"]
         raise FetchError, "Redirect without Location header" if location.nil?
-        return fetch_html(URI.parse(location), redirects_left: redirects_left - 1)
+        fetch_html(URI.parse(location), redirects_left: redirects_left - 1)
       when Net::HTTPSuccess
-        return decode_body(response)
+        decode_body(response)
       else
         raise FetchError, "HTTP #{response.code} from #{uri} (#{response.message})"
       end
@@ -183,7 +183,7 @@ module UltimateGuitar
       # Extract the letter from the path (e.g., /bands/a.htm -> "a", /bands/a2.htm -> "a")
       if path =~ %r{/bands/([a-z0-9-]+?)(\d*)\.htm}i
         letter = $1
-        
+
         if page_number == 1
           "#{uri.scheme}://#{uri.host}/bands/#{letter}.htm"
         else
@@ -197,4 +197,3 @@ module UltimateGuitar
     end
   end
 end
-

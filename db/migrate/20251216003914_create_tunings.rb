@@ -7,7 +7,7 @@ class CreateTunings < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :tunings, [:instrument, :name], unique: true
+    add_index :tunings, [ :instrument, :name ], unique: true
     add_index :tunings, :instrument
   end
 end

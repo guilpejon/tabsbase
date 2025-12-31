@@ -211,9 +211,9 @@ module UltimateGuitar
         raise FetchError, "Too many redirects" if redirects_left <= 0
         location = response["location"]
         raise FetchError, "Redirect without Location header" if location.nil?
-        return fetch_html(URI.parse(location), redirects_left: redirects_left - 1)
+        fetch_html(URI.parse(location), redirects_left: redirects_left - 1)
       when Net::HTTPSuccess
-        return decode_body(response)
+        decode_body(response)
       else
         raise FetchError, "HTTP #{response.code} from #{uri} (#{response.message})"
       end
@@ -457,7 +457,7 @@ module UltimateGuitar
     end
 
     def deep_find_hash(obj, &block)
-      stack = [obj]
+      stack = [ obj ]
       seen = 0
 
       until stack.empty?
@@ -489,14 +489,14 @@ module UltimateGuitar
       rating_count = extract_rating_count(tab_payload, page_state)
       version_name = extract_version_name(tab_payload, page_state)
       capo = extract_capo(tab_payload, page_state)
-      
+
       # Extract metadata for sanitization
       artist_name = extract_artist_name(tab_payload, page_state)
       song_title = extract_song_title(tab_payload, page_state)
-      
+
       # Extract YouTube URL from content (if present)
       youtube_url, content = extract_youtube_url(content)
-      
+
       # Clean redundant header info from content
       content = sanitize_tab_content(content, {
         artist_name: artist_name,
@@ -700,22 +700,22 @@ module UltimateGuitar
 
     def extract_tuning(tab_payload)
       raw = tab_payload["tuning"] || tab_payload.dig("meta", "tuning") || tab_payload.dig("tab", "tuning")
-      return [nil, nil] if raw.nil?
+      return [ nil, nil ] if raw.nil?
 
       if raw.is_a?(Hash)
         name = presence(raw["name"] || raw["title"] || raw["tuning_name"])
         strings = parse_tuning_strings(raw["value"] || raw["strings"] || raw["tuning"])
-        return [name, strings]
+        return [ name, strings ]
       end
 
       if raw.is_a?(String)
         # Sometimes just "Standard" or "E A D G B E"
         strings = parse_tuning_strings(raw)
         name = strings ? nil : presence(raw)
-        return [name, strings]
+        return [ name, strings ]
       end
 
-      [nil, nil]
+      [ nil, nil ]
     end
 
     def parse_tuning_strings(value)
@@ -777,19 +777,19 @@ module UltimateGuitar
     rescue ArgumentError, TypeError
       nil
     end
-    
+
     # Extract YouTube URL from content and return [url, cleaned_content]
     # Looks for patterns like:
     #   - VIDEO LESSON - www.youtube.com/watch?v=...
     #   - https://youtube.com/watch?v=...
     #   - youtu.be/...
     def extract_youtube_url(content)
-      return [nil, content] if content.nil? || content.empty?
-      
+      return [ nil, content ] if content.nil? || content.empty?
+
       youtube_url = nil
       lines = content.lines
       lines_to_remove = []
-      
+
       # YouTube URL patterns
       youtube_patterns = [
         # Full URLs
@@ -797,75 +797,75 @@ module UltimateGuitar
         /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]+)/,
         /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)/,
         # Just the domain without protocol (common in UG tabs)
-        /(?:^|\s)(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+        /(?:^|\s)(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/
       ]
-      
+
       lines.each_with_index do |line, index|
         next if youtube_url # Already found one
-        
+
         youtube_patterns.each do |pattern|
           match = line.match(pattern)
           if match
             video_id = match[1]
             youtube_url = "https://www.youtube.com/watch?v=#{video_id}"
-            
+
             # Check if this line is primarily a "VIDEO LESSON" line or just contains the URL
             # If the line is mostly about the video lesson, remove it entirely
             if line.match?(/video\s*lesson|lesson\s*video|watch\s*video|youtube/i) ||
                line.strip.match?(/^[-=_\s]*(?:video|youtube)/i) ||
-               line.gsub(/[-=_\s]/, '').length < 100 # Short lines with URLs are likely just link lines
+               line.gsub(/[-=_\s]/, "").length < 100 # Short lines with URLs are likely just link lines
               lines_to_remove << index
             end
             break
           end
         end
       end
-      
+
       # Remove the identified lines (in reverse to preserve indices)
       lines_to_remove.reverse.each { |i| lines.delete_at(i) }
-      
+
       # Also remove any lines that are just dashes/equals surrounding the video link
       # (decorative separators often used around VIDEO LESSON text)
       cleaned_lines = []
       skip_separator = false
-      
+
       lines.each_with_index do |line, i|
         stripped = line.strip
-        
+
         # Check if this is a decorative separator line (mostly dashes, equals, underscores)
-        is_separator = stripped.match?(/^[-=_\s]{20,}$/) && stripped.gsub(/[-=_\s]/, '').empty?
-        
+        is_separator = stripped.match?(/^[-=_\s]{20,}$/) && stripped.gsub(/[-=_\s]/, "").empty?
+
         # Skip separators that appear right before or after removed content
         if is_separator && lines_to_remove.any? { |removed_i| (removed_i - i).abs <= 2 }
           next
         end
-        
+
         cleaned_lines << line
       end
-      
-      [youtube_url, cleaned_lines.join]
+
+      [ youtube_url, cleaned_lines.join ]
     end
-    
+
     # Remove redundant header info from tab content that we've already extracted
     # (song title, artist name, tuning, capo, etc.)
     def sanitize_tab_content(content, metadata)
       return content if content.nil? || content.empty?
-      
+
       lines = content.lines
       removed_lines = 0
       max_lines_to_check = 15 # Only check the first N lines for header info
-      
+
       lines_to_remove = []
-      
+
       lines.each_with_index do |line, index|
         break if index >= max_lines_to_check
-        
+
         stripped = line.strip
         next if stripped.empty? # Keep empty lines for now, will be handled later
-        
+
         # Skip lines that are section markers (we want to keep these)
         next if stripped.match?(/^\[?(verse|chorus|intro|outro|bridge|pre-chorus|interlude|solo|break|tab|hook|instrumental|refrain)/i)
-        
+
         if redundant_header_line?(stripped, metadata)
           lines_to_remove << index
           removed_lines += 1
@@ -875,19 +875,19 @@ module UltimateGuitar
           break if removed_lines > 0 && index > removed_lines + 3
         end
       end
-      
+
       # Remove the identified lines
       lines_to_remove.reverse.each { |i| lines.delete_at(i) }
-      
+
       # Remove leading empty lines
       lines.shift while lines.first&.strip&.empty?
-      
+
       lines.join
     end
-    
+
     def redundant_header_line?(line, metadata)
       line_lower = line.downcase.strip
-      
+
       # Remove common UG header patterns
       return true if line_lower.match?(/^(standard\s+)?tuning\s*[:=]?\s*/i)
       return true if line_lower.match?(/^standard\s+tuning$/i)
@@ -901,11 +901,11 @@ module UltimateGuitar
       return true if line_lower.match?(/^tempo\s*[:=]?\s*\d+$/i)
       return true if line_lower.match?(/^bpm\s*[:=]?\s*\d+$/i)
       return true if line_lower.match?(/^time\s*(signature)?\s*[:=]?\s*\d+\/\d+$/i)
-      
+
       # Check if line matches song title or artist (with various separators)
       artist_name = metadata[:artist_name]&.to_s&.downcase&.strip
       song_title = metadata[:song_title]&.to_s&.downcase&.strip
-      
+
       if artist_name.present? && song_title.present?
         # Match patterns like "Song Title - Artist" or "Artist - Song Title"
         combined_patterns = [
@@ -917,33 +917,33 @@ module UltimateGuitar
           song_title,
           artist_name
         ]
-        
+
         combined_patterns.each do |pattern|
           # Fuzzy match: remove special chars and compare
-          clean_line = line_lower.gsub(/[^\w\s]/, '').gsub(/\s+/, ' ').strip
-          clean_pattern = pattern.gsub(/[^\w\s]/, '').gsub(/\s+/, ' ').strip
-          
+          clean_line = line_lower.gsub(/[^\w\s]/, "").gsub(/\s+/, " ").strip
+          clean_pattern = pattern.gsub(/[^\w\s]/, "").gsub(/\s+/, " ").strip
+
           return true if clean_line == clean_pattern
           return true if clean_line.start_with?(clean_pattern) && clean_line.length < clean_pattern.length + 20
         end
       elsif song_title.present?
-        clean_line = line_lower.gsub(/[^\w\s]/, '').gsub(/\s+/, ' ').strip
-        clean_title = song_title.gsub(/[^\w\s]/, '').gsub(/\s+/, ' ').strip
+        clean_line = line_lower.gsub(/[^\w\s]/, "").gsub(/\s+/, " ").strip
+        clean_title = song_title.gsub(/[^\w\s]/, "").gsub(/\s+/, " ").strip
         return true if clean_line == clean_title
       end
-      
+
       # Check for tuning name in line
       tuning_name = metadata[:tuning_name]&.to_s&.downcase&.strip
       if tuning_name.present? && tuning_name != "standard"
         return true if line_lower.include?(tuning_name)
       end
-      
+
       # Check for standalone capo mention that matches our extracted capo
       capo = metadata[:capo]
       if capo.present? && capo.to_i > 0
         return true if line_lower.match?(/capo.*#{capo}/i)
       end
-      
+
       false
     end
   end

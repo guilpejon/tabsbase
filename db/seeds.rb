@@ -7,8 +7,8 @@ puts "Seeding database..."
 # Create Tunings
 puts "Creating tunings..."
 
-guitar_standard = Tuning.create!(instrument: "Guitar", name: "Standard", strings: ["E", "A", "D", "G", "B", "E"])
-guitar_drop_d = Tuning.create!(instrument: "Guitar", name: "Drop D", strings: ["D", "A", "D", "G", "B", "E"])
-bass_standard = Tuning.create!(instrument: "Bass", name: "Standard", strings: ["E", "A", "D", "G"])
+guitar_standard = Tuning.create!(instrument: "Guitar", name: "Standard", strings: [ "E", "A", "D", "G", "B", "E" ])
+guitar_drop_d = Tuning.create!(instrument: "Guitar", name: "Drop D", strings: [ "D", "A", "D", "G", "B", "E" ])
+bass_standard = Tuning.create!(instrument: "Bass", name: "Standard", strings: [ "E", "A", "D", "G" ])
 
 puts "Created #{Tuning.count} tunings"

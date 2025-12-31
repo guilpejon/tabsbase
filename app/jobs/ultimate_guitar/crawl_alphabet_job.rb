@@ -12,7 +12,7 @@ module UltimateGuitar
     retry_on UltimateGuitar::BandListScraper::FetchError, wait: :polynomially_longer, attempts: 3
 
     def perform(letters: nil, min_tab_count: 100)
-      letters ||= ("a".."z").to_a + ["0-9"]
+      letters ||= ("a".."z").to_a + [ "0-9" ]
 
       Rails.logger.info "[UG Crawl] Starting alphabet crawl for letters: #{letters.join(', ')}"
 
@@ -31,4 +31,3 @@ module UltimateGuitar
     end
   end
 end
-

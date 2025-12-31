@@ -14,5 +14,5 @@ Rails.application.routes.draw do
 
   mount MissionControl::Jobs::Engine, at: "/jobs"
 
-  resources :tabs, only: [:show]
+  resources :tabs, only: [ :show ]
 end

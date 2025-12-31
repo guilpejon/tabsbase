@@ -33,4 +33,3 @@ module UltimateGuitar
     end
   end
 end
-

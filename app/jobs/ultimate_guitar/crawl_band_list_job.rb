@@ -57,7 +57,7 @@ module UltimateGuitar
       max_pages = 15
       if pagination[:next_url].present? && page < max_pages
         Rails.logger.info "[UG Crawl] Continuing to page #{page + 1} of letter '#{letter}'"
-        
+
         # Wait before crawling next page to be polite
         CrawlBandListJob.set(wait: 5.seconds).perform_later(
           url: pagination[:next_url],
@@ -93,4 +93,3 @@ module UltimateGuitar
     end
   end
 end
-

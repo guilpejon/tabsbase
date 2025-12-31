@@ -30,5 +30,3 @@ class HomeController < ApplicationController
     @instruments = Tab.distinct.pluck(:instrument).compact.sort
   end
 end
-
-

@@ -17,4 +17,3 @@ class Artist < ApplicationRecord
     songs.count
   end
 end
-

@@ -4,5 +4,3 @@ class TabsController < ApplicationController
     @tab.increment_views!
   end
 end
-
-

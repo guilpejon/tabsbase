@@ -25,7 +25,7 @@ namespace :ultimate_guitar do
   end
 
   desc "Crawl a specific letter (e.g., rake ultimate_guitar:crawl_letter[a])"
-  task :crawl_letter, [:letter] => :environment do |_t, args|
+  task :crawl_letter, [ :letter ] => :environment do |_t, args|
     letter = args[:letter]
     abort "Usage: rake ultimate_guitar:crawl_letter[LETTER]" if letter.blank?
 
@@ -43,7 +43,7 @@ namespace :ultimate_guitar do
   end
 
   desc "Crawl a specific band by URL"
-  task :crawl_band, [:url] => :environment do |_t, args|
+  task :crawl_band, [ :url ] => :environment do |_t, args|
     url = args[:url]
     abort "Usage: rake ultimate_guitar:crawl_band[URL]" if url.blank?
 
@@ -57,7 +57,7 @@ namespace :ultimate_guitar do
   end
 
   desc "Scrape a single tab by URL"
-  task :scrape_tab, [:url] => :environment do |_t, args|
+  task :scrape_tab, [ :url ] => :environment do |_t, args|
     url = args[:url]
     abort "Usage: rake ultimate_guitar:scrape_tab[URL]" if url.blank?
 
@@ -90,4 +90,3 @@ namespace :ultimate_guitar do
     end
   end
 end
-

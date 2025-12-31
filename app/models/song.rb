@@ -24,4 +24,3 @@ class Song < ApplicationRecord
     tabs.pluck(:instrument).uniq
   end
 end
-

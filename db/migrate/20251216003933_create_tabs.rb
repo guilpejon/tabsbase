@@ -15,6 +15,6 @@ class CreateTabs < ActiveRecord::Migration[8.1]
     end
 
     add_index :tabs, :instrument
-    add_index :tabs, [:song_id, :instrument]
+    add_index :tabs, [ :song_id, :instrument ]
   end
 end

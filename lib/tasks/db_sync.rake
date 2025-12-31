@@ -27,9 +27,9 @@ namespace :db do
       ]
 
       # Add specific tables
-      SYNC_TABLES.each { |t| cmd += ["-t", t] }
+      SYNC_TABLES.each { |t| cmd += [ "-t", t ] }
 
-      cmd += ["-f", dump_file.to_s]
+      cmd += [ "-f", dump_file.to_s ]
 
       system(env, *cmd)
 
@@ -77,4 +77,3 @@ namespace :db do
     end
   end
 end
-

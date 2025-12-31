@@ -1,6 +1,15 @@
 module ApplicationHelper
   include Pagy::Frontend
 
+  # Sanitize URL to prevent XSS (only allow http/https)
+  def safe_external_url(url)
+    return nil if url.blank?
+    uri = URI.parse(url.to_s)
+    %w[http https].include?(uri.scheme) ? url : nil
+  rescue URI::InvalidURIError
+    nil
+  end
+
   # Custom pagination nav with Tailwind styling
   def pagy_tailwind_nav(pagy)
     return "" if pagy.pages < 2

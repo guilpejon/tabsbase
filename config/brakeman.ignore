@@ -1,0 +1,18 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "13b60c206b6d7de8d384ee3c555d60c4cd552b596b50f6b7a9cdf5ca7fd4f094",
+      "note": "Intentional: scraper runs locally, not in production. Some sites have cert issues."
+    },
+    {
+      "fingerprint": "3b3721a38eee594e04dbb324d1fa41304565300330fdae78828bd53638d5068a",
+      "note": "Intentional: scraper runs locally, not in production. Some sites have cert issues."
+    },
+    {
+      "fingerprint": "a5c0c3436c4a7264e5806572ddaca8284cc107c63800d939b440180e11be376c",
+      "note": "Intentional: scraper runs locally, not in production. Some sites have cert issues."
+    }
+  ],
+  "updated": "2025-12-31",
+  "brakeman_version": "7.1.2"
+}

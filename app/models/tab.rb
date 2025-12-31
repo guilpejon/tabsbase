@@ -35,10 +35,9 @@ class Tab < ApplicationRecord
   end
 
   def tab_type_label
-    parts = [instrument.titleize]
+    parts = [ instrument.titleize ]
     parts << tab_type.titleize if tab_type.present?
     parts << version_name.titleize if version_name.present?
     parts.join(" ")
   end
 end
-

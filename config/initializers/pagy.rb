@@ -10,4 +10,3 @@ Pagy::DEFAULT[:limit] = 50
 
 # Handle overflow (page out of range)
 Pagy::DEFAULT[:overflow] = :last_page
-

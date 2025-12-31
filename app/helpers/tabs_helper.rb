@@ -11,10 +11,10 @@ module TabsHelper
   # Extract all unique chord names from content, preserving order of first appearance
   def extract_unique_chords(content)
     return [] if content.blank?
-    
+
     chords = []
     seen = Set.new
-    
+
     content.to_s.scan(CHORD_RE) do |match|
       chord = decode_html_entities(match[0].to_s.strip)
       unless seen.include?(chord)
@@ -22,7 +22,7 @@ module TabsHelper
         chords << chord
       end
     end
-    
+
     chords
   end
 
@@ -40,7 +40,7 @@ module TabsHelper
     "&lt;" => "<",       # Less than
     "&gt;" => ">",       # Greater than
     "&quot;" => '"',     # Quote
-    "&apos;" => "'",     # Apostrophe
+    "&apos;" => "'"     # Apostrophe
   }.freeze
 
   # Renders Ultimate Guitar-style markup contained in Tab#content.
@@ -127,7 +127,7 @@ module TabsHelper
 
     # Add top margin if this block starts with a section marker
     starts_with_section = normalized.match?(SECTION_MARKERS)
-    
+
     # All text blocks use pre-wrap for wrapping - CSS will handle mobile
     css_class = "text-sm leading-6 text-slate-900 font-mono"
     css_class += " mt-6" if starts_with_section
@@ -142,7 +142,7 @@ module TabsHelper
   def ug_inline_format(text, chord_variant:)
     # First decode HTML entities from the source (e.g., &rsquo; -> ')
     decoded = decode_html_entities(text)
-    
+
     # Then escape for safe HTML output
     escaped = ERB::Util.h(decoded)
 
@@ -153,15 +153,15 @@ module TabsHelper
 
     escaped.html_safe
   end
-  
+
   def decode_html_entities(text)
     result = text.to_s
     HTML_ENTITIES.each do |entity, char|
       result = result.gsub(entity, char)
     end
     # Also handle numeric entities like &#39;
-    result.gsub(/&#(\d+);/) { [$1.to_i].pack("U") }
-          .gsub(/&#x([0-9a-fA-F]+);/) { [$1.to_i(16)].pack("U") }
+    result.gsub(/&#(\d+);/) { [ $1.to_i ].pack("U") }
+          .gsub(/&#x([0-9a-fA-F]+);/) { [ $1.to_i(16) ].pack("U") }
   end
 
   def chord_span(chord, variant:)
@@ -175,5 +175,3 @@ module TabsHelper
     %(<span class="inline rounded bg-slate-900 px-1 py-0.5 text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:bg-slate-700 transition-colors" data-chord="#{chord_escaped}">#{chord_escaped}</span>)
   end
 end
-
-

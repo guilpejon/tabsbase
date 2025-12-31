@@ -114,7 +114,7 @@ module UltimateGuitar
         song_key = t[:song_title].to_s.downcase.strip
         type_key = t[:type].to_s.downcase.strip
         version_key = t[:version_name].to_s.downcase.strip # empty string for regular versions
-        [song_key, type_key, version_key]
+        [ song_key, type_key, version_key ]
       end
 
       # For each song+type+version combo, pick the tab with best weighted score
@@ -197,9 +197,9 @@ module UltimateGuitar
         raise FetchError, "Too many redirects" if redirects_left <= 0
         location = response["location"]
         raise FetchError, "Redirect without Location header" if location.nil?
-        return fetch_html(URI.parse(location), redirects_left: redirects_left - 1)
+        fetch_html(URI.parse(location), redirects_left: redirects_left - 1)
       when Net::HTTPSuccess
-        return decode_body(response)
+        decode_body(response)
       else
         raise FetchError, "HTTP #{response.code} from #{uri} (#{response.message})"
       end
@@ -442,4 +442,3 @@ module UltimateGuitar
     end
   end
 end
-

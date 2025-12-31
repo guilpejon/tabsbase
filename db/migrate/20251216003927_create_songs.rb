@@ -11,7 +11,7 @@ class CreateSongs < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :songs, [:artist_id, :title]
+    add_index :songs, [ :artist_id, :title ]
     add_index :songs, :title
   end
 end

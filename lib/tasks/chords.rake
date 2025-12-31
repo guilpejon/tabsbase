@@ -150,4 +150,3 @@ def extract_chord_names(content, section_name)
 
   chords
 end
-
