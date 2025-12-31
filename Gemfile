@@ -61,6 +61,6 @@ end
 gem "mission_control-jobs", "~> 1.1"
 
 # Pagination - pinned to 9.x (v43+ is a breaking rewrite)
-gem "pagy", "~> 9.0"
+gem "pagy", "~> 43.2"
 
 gem "lefthook", "~> 2.0", group: :development
