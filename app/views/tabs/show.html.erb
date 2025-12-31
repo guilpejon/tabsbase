@@ -3,35 +3,33 @@
 <% is_chord_tab = @tab.tab_type == "chords" %>
 <div class="w-full pb-16" data-controller="singer-mode<%= ' chord-diagram' if has_chords %><%= ' transpose' if is_chord_tab && has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
   <div class="mb-6 px-4 sm:px-0">
-    <%= link_to "← Back to search", root_path(q: params[:q]), class: "text-sm text-slate-600 hover:text-slate-900" %>
+    <%= link_to "← Back to search", root_path(q: params[:q], instrument: params[:instrument]), class: "text-sm text-slate-600 hover:text-slate-900" %>
 
     <div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
-        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight"><%= @tab.display_name %></h1>
+        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight">
+          <%= @tab.display_name %>
+          <span class="text-base sm:text-lg font-normal text-slate-500">(<%= @tab.tab_type_label %>)</span>
+        </h1>
         <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
-          <span><%= @tab.tuning.full_name %></span>
-          <% if @tab.difficulty.present? %>
-            <span>• <%= @tab.difficulty %></span>
+          <% unless @tab.tuning.standard? %>
+            <span><%= @tab.tuning.full_name %></span>
           <% end %>
           <% if @tab.capo.present? %>
-            <span>• Capo <%= @tab.capo %></span>
-          <% end %>
-          <span>• <%= number_with_delimiter(@tab.views_count) %> views</span>
-          <% if @tab.rating.present? %>
-            <span>• <%= @tab.rating.to_f.round(2) %>/5</span>
+            <span><%= @tab.tuning.standard? ? "" : "• " %>Capo <%= @tab.capo %></span>
           <% end %>
           <% if @tab.source_url.present? %>
-            <span>• <%= link_to "Source", @tab.source_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
+            <span><%= (@tab.tuning.standard? && @tab.capo.blank?) ? "" : "• " %><%= link_to "Source", @tab.source_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
           <% end %>
           <% if @tab.youtube_url.present? %>
-            <span>• <%= link_to "🎬 Video", @tab.youtube_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
+            <span>• <%= link_to "Video", @tab.youtube_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
           <% end %>
         </div>
       </div>
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <% if @tab.tab_type == "chords" && has_chords %>
         <%# Transpose Controls - only for chord tabs with chords %>
-        <div class="flex items-center gap-1.5 px-2 py-1.5 sm:py-1 rounded-md border border-slate-200 bg-white">
+        <div class="h-10 flex items-center gap-1.5 px-2 rounded-md border border-slate-200 bg-white">
           <button type="button"
                   class="w-7 h-7 flex items-center justify-center rounded text-slate-600 hover:bg-slate-100 transition-colors font-semibold text-lg"
                   data-action="click->transpose#transposeDown"
@@ -57,12 +55,12 @@
         </div>
         <%# Singer Mode Toggle Button - only for chord tabs %>
         <button type="button"
-                class="px-2.5 py-2 sm:px-3 sm:py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                class="h-10 px-3 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
                 data-singer-mode-target="toggleButton"
                 data-action="click->singer-mode#toggle"
                 title="Singer Mode - Hide chords & tabs">
           <span class="flex items-center gap-1.5">
-            <svg class="w-5 h-5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
             </svg>
             <span class="hidden sm:inline">Singer</span>
@@ -71,21 +69,18 @@
         <% elsif @tab.tab_type == "chords" %>
         <%# Singer Mode Toggle Button - only for chord tabs %>
         <button type="button"
-                class="px-2.5 py-2 sm:px-3 sm:py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                class="h-10 px-3 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
                 data-singer-mode-target="toggleButton"
                 data-action="click->singer-mode#toggle"
                 title="Singer Mode - Hide chords & tabs">
           <span class="flex items-center gap-1.5">
-            <svg class="w-5 h-5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
             </svg>
             <span class="hidden sm:inline">Singer</span>
           </span>
         </button>
         <% end %>
-        <div class="hidden sm:block shrink-0 text-sm text-slate-500">
-          <%= @tab.created_at.to_date %>
-        </div>
       </div>
     </div>
   </div>

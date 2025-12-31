@@ -31,10 +31,14 @@ class Tab < ApplicationRecord
   end
 
   def display_name
-    parts = ["#{artist_name} - #{song_title}", instrument.titleize]
+    "#{artist_name} - #{song_title}"
+  end
+
+  def tab_type_label
+    parts = [instrument.titleize]
     parts << tab_type.titleize if tab_type.present?
     parts << version_name.titleize if version_name.present?
-    parts.join(" - ")
+    parts.join(" ")
   end
 end
 

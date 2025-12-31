@@ -15,7 +15,20 @@ class Tuning < ApplicationRecord
   end
 
   def full_name
-    "#{name} (#{display_strings})"
+    # Avoid redundancy if name is basically the same as the strings
+    strings_normalized = display_strings.gsub("-", " ").downcase
+    name_normalized = name.to_s.downcase.strip
+    
+    if name_normalized == strings_normalized || name_normalized.gsub(/\s+/, "") == strings_normalized.gsub(/\s+/, "")
+      # Name is same as strings, just show strings with a generic label
+      "Custom (#{display_strings})"
+    else
+      "#{name} (#{display_strings})"
+    end
+  end
+
+  def standard?
+    name.to_s.downcase.strip == "standard"
   end
 end
 

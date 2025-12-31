@@ -126,6 +126,9 @@ module UltimateGuitar
       strings = tuning_attrs.fetch(:strings)
       strings = Array(strings).map(&:to_s)
 
+      # Normalize tuning name - if it looks like string notes, give it a proper name
+      name = normalize_tuning_name(name, strings, instrument)
+
       tuning = Tuning.find_or_create_by!(instrument: instrument, name: name) do |t|
         t.strings = strings
       end
@@ -136,6 +139,39 @@ module UltimateGuitar
       if tuning && strings.present? && (tuning.strings.blank? || tuning.strings != strings)
         tuning.update!(strings: strings)
       end
+    end
+
+    def normalize_tuning_name(name, strings, instrument)
+      # Standard tunings for each instrument
+      standard_tunings = {
+        "guitar" => %w[E A D G B E],
+        "bass" => %w[E A D G],
+        "ukulele" => %w[G C E A],
+        "cavaquinho" => %w[D G B D]
+      }
+
+      # If name is empty or looks like string notes (e.g., "G C E A" or "E-A-D-G-B-E")
+      if name.blank? || name.match?(/^[A-Ga-g]#?\s*[-\s]\s*[A-Ga-g]/i)
+        # Check if it matches a standard tuning
+        standard = standard_tunings[instrument.to_s.downcase]
+        if standard && strings.map(&:upcase) == standard.map(&:upcase)
+          return "Standard"
+        end
+
+        # If we have strings but no good name, derive a name from the pattern
+        if strings.present?
+          # Check for common patterns
+          if strings.first&.upcase == "D" && instrument.to_s.downcase == "guitar" && strings[2]&.upcase == "D"
+            return "Drop D"
+          end
+          # Otherwise use the strings as the name but formatted nicely
+          return strings.join(" ")
+        end
+
+        return "Standard"
+      end
+
+      name
     end
 
     def find_or_initialize_tab!(song, url)
