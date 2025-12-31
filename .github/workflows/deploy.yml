@@ -48,7 +48,14 @@ jobs:
             ProxyCommand cloudflared access ssh --hostname ssh.tabsbase.com
             StrictHostKeyChecking no
             User guilpejon
+            ServerAliveInterval 30
+            ServerAliveCountMax 60
+            TCPKeepAlive yes
           EOF
+
+      - name: Clean up Docker on Raspberry Pi
+        run: |
+          ssh guilpejon@raspberrypi.local "docker system prune -af --volumes && docker buildx prune -af" || true
 
       - name: Deploy with Kamal
         env:
