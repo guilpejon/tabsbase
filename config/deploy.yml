@@ -81,9 +81,9 @@ builder:
   # Raspberry Pi uses ARM64 architecture
   arch: arm64
 
-  # Build on Apple Silicon locally (same architecture, faster builds)
-  # If building on Intel Mac, you may want to use a remote builder or QEMU emulation
-  # remote: ssh://docker@docker-builder-server
+  # Build directly on Raspberry Pi (native ARM64, much faster than QEMU emulation)
+  # This makes CI deploys as fast as local deploys
+  remote: ssh://guilpejon@raspberrypi.local
 
 # SSH configuration for Raspberry Pi
 ssh:
