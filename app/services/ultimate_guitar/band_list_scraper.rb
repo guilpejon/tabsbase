@@ -118,15 +118,15 @@ module UltimateGuitar
 
     def extract_page_state!(html)
       # UG pages embed state in: <div class="js-store" data-content="{...}">
+      # Use a two-step approach to avoid ReDoS vulnerability
       html_bin = html.to_s.b
-      re = Regexp.new(
-        'class=(["\'])[^"\']*\bjs-store\b[^"\']*\1[^>]*\sdata-content=(["\'])(.*?)\2'.b,
-        Regexp::IGNORECASE | Regexp::MULTILINE
-      )
-      m = html_bin.match(re)
+
+      # Find the js-store element with limited pattern to prevent catastrophic backtracking
+      m = html_bin.match(/class="js-store"[^>]{0,500}data-content="([^"]+)"/i)
+      m ||= html_bin.match(/class='js-store'[^>]{0,500}data-content='([^']+)'/i)
       raise ParseError, "Could not find js-store data-content" unless m
 
-      encoded = m[3].to_s.force_encoding(Encoding::UTF_8)
+      encoded = m[1].to_s.force_encoding(Encoding::UTF_8)
       decoded = CGI.unescapeHTML(encoded)
       JSON.parse(decoded)
     rescue JSON::ParserError => e

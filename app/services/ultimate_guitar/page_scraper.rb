@@ -313,16 +313,17 @@ module UltimateGuitar
       # Example snippet:
       #   <div class="js-store" data-content="{&quot;store&quot;:{&quot;page&quot;:{...}}}"></div>
       # NOTE: Avoid encoding issues by matching in ASCII-8BIT (binary).
+      # Use a two-step approach to avoid ReDoS vulnerability
       html_bin = html.to_s.b
-      re = Regexp.new(
-        'class=(["\'])[^"\']*\bjs-store\b[^"\']*\1[^>]*\sdata-content=(["\'])(.*?)\2'.b,
-        Regexp::IGNORECASE | Regexp::MULTILINE
-      )
-      m = html_bin.match(re)
+
+      # Step 1: Find the js-store element (limited pattern)
+      store_match = html_bin.match(/class="js-store"[^>]{0,500}data-content="([^"]+)"/i)
+      store_match ||= html_bin.match(/class='js-store'[^>]{0,500}data-content='([^']+)'/i)
+      m = store_match
       return nil unless m
 
       # data-content is ASCII with entities, so decode safely into UTF-8.
-      encoded = m[3].to_s.force_encoding(Encoding::UTF_8)
+      encoded = m[1].to_s.force_encoding(Encoding::UTF_8)
       decoded = CGI.unescapeHTML(encoded)
 
       root = JSON.parse(decoded)
