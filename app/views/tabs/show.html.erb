@@ -5,10 +5,10 @@
   <div class="mb-6 px-4 sm:px-0">
     <%= link_to "← Back to search", root_path(q: params[:q]), class: "text-sm text-slate-600 hover:text-slate-900" %>
 
-    <div class="mt-3 flex items-start justify-between gap-4">
+    <div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-tight"><%= @tab.display_name %></h1>
-        <div class="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-slate-600">
+        <h1 class="text-xl sm:text-2xl font-semibold tracking-tight"><%= @tab.display_name %></h1>
+        <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
           <span><%= @tab.tuning.full_name %></span>
           <% if @tab.difficulty.present? %>
             <span>• <%= @tab.difficulty %></span>
@@ -28,10 +28,10 @@
           <% end %>
         </div>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <% if @tab.tab_type == "chords" && has_chords %>
         <%# Transpose Controls - only for chord tabs with chords %>
-        <div class="flex items-center gap-1.5 px-2 py-1 rounded-md border border-slate-200 bg-white">
+        <div class="flex items-center gap-1.5 px-2 py-1.5 sm:py-1 rounded-md border border-slate-200 bg-white">
           <button type="button"
                   class="w-7 h-7 flex items-center justify-center rounded text-slate-600 hover:bg-slate-100 transition-colors font-semibold text-lg"
                   data-action="click->transpose#transposeDown"
@@ -57,12 +57,12 @@
         </div>
         <%# Singer Mode Toggle Button - only for chord tabs %>
         <button type="button"
-                class="px-3 py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                class="px-2.5 py-2 sm:px-3 sm:py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
                 data-singer-mode-target="toggleButton"
                 data-action="click->singer-mode#toggle"
                 title="Singer Mode - Hide chords & tabs">
           <span class="flex items-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
             </svg>
             <span class="hidden sm:inline">Singer</span>
@@ -71,12 +71,12 @@
         <% elsif @tab.tab_type == "chords" %>
         <%# Singer Mode Toggle Button - only for chord tabs %>
         <button type="button"
-                class="px-3 py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                class="px-2.5 py-2 sm:px-3 sm:py-1.5 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
                 data-singer-mode-target="toggleButton"
                 data-action="click->singer-mode#toggle"
                 title="Singer Mode - Hide chords & tabs">
           <span class="flex items-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
             </svg>
             <span class="hidden sm:inline">Singer</span>
@@ -91,20 +91,31 @@
   </div>
 
   <% if has_chords && unique_chords.any? %>
-  <%# Chord Dictionary - shown above tab content on mobile, sidebar on desktop %>
-  <div class="mb-4 px-4 sm:px-0 lg:hidden">
+  <%# Chord Dictionary - shown above tab content on mobile (when not sticky), sidebar on desktop %>
+  <div class="mb-4 px-4 sm:px-0 lg:hidden" data-chord-diagram-target="mobileInlineChords">
     <div class="rounded-lg border border-slate-200 bg-white">
-      <%# Header with collapse toggle - starts expanded on mobile %>
-      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors"
-           data-action="click->chord-diagram#toggleMobileDictionary"
-           data-chord-diagram-target="mobileDictionaryHeader">
-        <h2 class="font-semibold text-slate-900">Chords</h2>
-        <svg class="w-5 h-5 text-slate-400 transition-transform" 
-             data-chord-diagram-target="mobileDictionaryArrow"
-             style="transform: rotate(90deg);"
-             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-        </svg>
+      <%# Header with collapse toggle and sticky toggle %>
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+        <div class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 -m-2 p-2 rounded transition-colors"
+             data-action="click->chord-diagram#toggleMobileDictionary"
+             data-chord-diagram-target="mobileDictionaryHeader">
+          <h2 class="font-semibold text-slate-900">Chords</h2>
+          <svg class="w-5 h-5 text-slate-400 transition-transform" 
+               data-chord-diagram-target="mobileDictionaryArrow"
+               style="transform: rotate(90deg);"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </div>
+        <button type="button"
+                class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+                data-action="click->chord-diagram#toggleStickyMode"
+                title="Pin chords to bottom">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+          <span>Pin</span>
+        </button>
       </div>
       
       <%# Instrument selector %>
@@ -147,6 +158,42 @@
             </div>
           <% end %>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Sticky bottom chord bar for mobile - hidden by default %>
+  <div class="hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-lg lg:hidden"
+       data-chord-diagram-target="stickyChordBar">
+    <%# Header with instrument dropdown and unpin button %>
+    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+      <select class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+              data-action="change->chord-diagram#selectInstrumentFromDropdown"
+              data-chord-diagram-target="stickyInstrumentDropdown">
+        <option value="guitar">Guitar</option>
+        <option value="ukulele">Ukulele</option>
+        <option value="cavaquinho">Cavaquinho</option>
+        <option value="piano">Piano</option>
+      </select>
+      <button type="button"
+              class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
+              data-action="click->chord-diagram#toggleStickyMode"
+              title="Unpin chords">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+        </svg>
+        <span>Unpin</span>
+      </button>
+    </div>
+    <%# Chord diagrams - horizontal scroll %>
+    <div class="p-2 overflow-x-auto">
+      <div class="flex gap-2 pb-1" data-chord-diagram-target="stickyDictionaryGrid">
+        <% unique_chords.each do |chord| %>
+          <div class="flex-shrink-0 flex justify-center items-start"
+               data-chord="<%= chord %>"
+               data-chord-diagram-target="stickyDictionaryChord">
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
@@ -242,31 +289,30 @@
          data-action="click->chord-diagram#stopPropagation">
       <%# Mobile panel header with close button and instrument selector %>
       <div class="flex items-center justify-between p-4 border-b border-slate-200">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
           <button type="button" 
-                  class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-200 bg-slate-900 text-white"
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-slate-900 text-white transition-colors"
                   data-instrument="guitar"
                   data-action="click->chord-diagram#selectInstrument">
-            🎸
+            Guitar
           </button>
           <button type="button" 
-                  class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600"
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
                   data-instrument="ukulele"
                   data-action="click->chord-diagram#selectInstrument">
-            🪕
+            Ukulele
           </button>
           <button type="button" 
-                  class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600"
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
                   data-instrument="cavaquinho"
-                  data-action="click->chord-diagram#selectInstrument"
-                  title="Cavaquinho">
-            🎻
+                  data-action="click->chord-diagram#selectInstrument">
+            Cav
           </button>
           <button type="button" 
-                  class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600"
+                  class="px-2 py-1 text-xs font-medium rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors"
                   data-instrument="piano"
                   data-action="click->chord-diagram#selectInstrument">
-            🎹
+            Piano
           </button>
         </div>
         <button type="button" 

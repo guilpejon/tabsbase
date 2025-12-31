@@ -1880,6 +1880,9 @@ function normalizeChordName(chord) {
   result = result.replace(/Δ7?/g, 'maj7')
   result = result.replace(/M7/g, 'maj7')
   
+  // Remove 'maj' suffix when it's just major (not maj7) - Cmaj → C
+  result = result.replace(/maj(?!7)/g, '')
+  
   // Remove parentheses - (add9) becomes add9, (9) becomes 9
   result = result.replace(/\(([^)]+)\)/g, '$1')
   

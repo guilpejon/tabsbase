@@ -4,11 +4,12 @@ import { getChordData, chordExists, getChordRoot, NOTE_SEMITONES, transposeChord
 // Handles chord diagram display on hover (desktop) and tap (mobile)
 // Shows guitar, ukulele, cavaquinho, or piano chord diagrams
 export default class extends Controller {
-  static targets = ["tooltip", "mobilePanel", "instrumentSelector", "dictionaryHeader", "dictionaryArrow", "dictionaryContent", "dictionaryGrid", "dictionaryChord", "mobileDictionaryHeader", "mobileDictionaryArrow", "mobileDictionaryContent"]
+  static targets = ["tooltip", "mobilePanel", "instrumentSelector", "dictionaryHeader", "dictionaryArrow", "dictionaryContent", "dictionaryGrid", "dictionaryChord", "mobileDictionaryHeader", "mobileDictionaryArrow", "mobileDictionaryContent", "mobileInlineChords", "stickyChordBar", "stickyDictionaryGrid", "stickyDictionaryChord", "stickyInstrumentDropdown"]
   static values = {
     instrument: { type: String, default: "guitar" },
     dictionaryCollapsed: { type: Boolean, default: false },
     mobileDictionaryCollapsed: { type: Boolean, default: false },
+    stickyMode: { type: Boolean, default: false },
     chords: Array
   }
   
@@ -50,15 +51,27 @@ export default class extends Controller {
     }
     // Otherwise, mobile stays expanded by default (CSS handles initial state)
     
+    // Load sticky mode preference
+    const stickyMode = localStorage.getItem("chordStickyMode")
+    if (stickyMode === "true") {
+      this.stickyModeValue = true
+      this.updateStickyModeState()
+    }
+    
     // Render chord dictionary - use requestAnimationFrame to ensure DOM is ready
     requestAnimationFrame(() => {
       this.renderDictionary()
+      if (this.stickyModeValue) {
+        this.renderStickyDictionary()
+      }
     })
   }
   
   disconnect() {
     window.removeEventListener("resize", this.resizeHandler)
     this.unbindEventDelegation()
+    // Clean up body padding from sticky mode
+    document.body.style.paddingBottom = ""
   }
   
   bindEventDelegation() {
@@ -247,6 +260,35 @@ export default class extends Controller {
     event.stopPropagation()
   }
   
+  selectInstrumentFromDropdown(event) {
+    const instrument = event.target.value
+    if (instrument) {
+      this.instrumentValue = instrument
+      localStorage.setItem("chordDiagramInstrument", instrument)
+      this.updateInstrumentSelector()
+      
+      // Refresh chord displays
+      if (this.currentChord) {
+        const chordData = getChordData(this.currentChord, this.instrumentValue)
+        if (this.hasMobilePanelTarget && !this.mobilePanelTarget.classList.contains("hidden")) {
+          const contentContainer = this.mobilePanelTarget.querySelector("[data-chord-content]")
+          if (contentContainer) {
+            if (!chordData) {
+              contentContainer.innerHTML = this.renderUnknownChord(this.currentChord, true)
+            } else {
+              contentContainer.innerHTML = this.renderChordDiagram(this.currentChord, chordData, true)
+            }
+          }
+        }
+      }
+      
+      this.renderDictionary()
+      if (this.stickyModeValue) {
+        this.renderStickyDictionary()
+      }
+    }
+  }
+  
   selectInstrument(event) {
     const instrument = event.target.dataset.instrument || event.currentTarget.dataset.instrument
     if (instrument) {
@@ -280,6 +322,11 @@ export default class extends Controller {
       
       // Re-render the chord dictionary
       this.renderDictionary()
+      
+      // Re-render sticky dictionary if visible
+      if (this.stickyModeValue) {
+        this.renderStickyDictionary()
+      }
     }
   }
   
@@ -339,6 +386,65 @@ export default class extends Controller {
     })
   }
   
+  toggleStickyMode() {
+    this.stickyModeValue = !this.stickyModeValue
+    localStorage.setItem("chordStickyMode", this.stickyModeValue)
+    this.updateStickyModeState()
+    
+    if (this.stickyModeValue) {
+      this.renderStickyDictionary()
+    }
+  }
+  
+  updateStickyModeState() {
+    // Toggle visibility of inline chords vs sticky bar
+    if (this.hasMobileInlineChordsTarget) {
+      if (this.stickyModeValue) {
+        this.mobileInlineChordsTarget.classList.add("hidden")
+      } else {
+        this.mobileInlineChordsTarget.classList.remove("hidden")
+      }
+    }
+    
+    if (this.hasStickyChordBarTarget) {
+      if (this.stickyModeValue) {
+        this.stickyChordBarTarget.classList.remove("hidden")
+        // Add padding to body to account for sticky bar height
+        document.body.style.paddingBottom = `${this.stickyChordBarTarget.offsetHeight}px`
+        // Sync dropdown with current instrument
+        if (this.hasStickyInstrumentDropdownTarget) {
+          this.stickyInstrumentDropdownTarget.value = this.instrumentValue
+        }
+      } else {
+        this.stickyChordBarTarget.classList.add("hidden")
+        document.body.style.paddingBottom = ""
+      }
+    }
+  }
+  
+  renderStickyDictionary() {
+    // Get sticky chord containers
+    const chordContainers = this.element.querySelectorAll('[data-chord-diagram-target="stickyDictionaryChord"]')
+    if (chordContainers.length === 0) return
+    
+    // Use transposed chords if available
+    const chordsToRender = this.transposedChords || this.chordsValue || []
+    
+    chordContainers.forEach((container, index) => {
+      const chordName = chordsToRender[index] || container.dataset.chord
+      if (!chordName) return
+      
+      container.dataset.chord = chordName
+      
+      const chordData = getChordData(chordName, this.instrumentValue)
+      if (chordData) {
+        container.innerHTML = this.renderChordDiagramMini(chordName, chordData)
+      } else {
+        container.innerHTML = this.renderUnknownChordMini(chordName)
+      }
+    })
+  }
+  
   // Handle transpose event from transpose controller
   handleTranspose(event) {
     const { transposedChords } = event.detail
@@ -346,6 +452,11 @@ export default class extends Controller {
     
     // Re-render the chord dictionary with transposed chords
     this.renderDictionary()
+    
+    // Re-render sticky dictionary if visible
+    if (this.stickyModeValue) {
+      this.renderStickyDictionary()
+    }
   }
   
   renderDictionary() {
@@ -618,6 +729,11 @@ export default class extends Controller {
         btn.classList.add("bg-white", "text-slate-600", "hover:bg-slate-100")
       }
     })
+    
+    // Update sticky dropdown if it exists
+    if (this.hasStickyInstrumentDropdownTarget) {
+      this.stickyInstrumentDropdownTarget.value = this.instrumentValue
+    }
   }
   
   renderChordDiagram(chordName, chordData, large = false) {
