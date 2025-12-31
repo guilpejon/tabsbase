@@ -60,5 +60,5 @@ end
 
 gem "mission_control-jobs", "~> 1.1"
 
-# Pagination
+# Pagination - pinned to 9.x (v43+ is a breaking rewrite)
 gem "pagy", "~> 9.0"
