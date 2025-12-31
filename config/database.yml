@@ -94,6 +94,7 @@ production:
     database: tabsbase_production
     username: tabsbase
     password: <%= ENV["TABSBASE_DATABASE_PASSWORD"] %>
+    host: <%= ENV.fetch("DB_HOST", "tabsbase-db") %>
   cache:
     <<: *primary_production
     database: tabsbase_production_cache
