@@ -1,5 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
 
+// Safely strip HTML tags by looping until no more matches (prevents bypass with nested tags)
+function stripHtmlTags(str) {
+  let prev
+  do {
+    prev = str
+    str = str.replace(/<[^>]*>/g, "")
+  } while (str !== prev)
+  return str
+}
+
 // Singer Mode Controller
 // Hides chords, tabs, and musical notation to show only lyrics
 export default class extends Controller {
@@ -155,7 +165,7 @@ export default class extends Controller {
       
       for (const line of lines) {
         // Get text content without HTML tags
-        const textContent = line.replace(/<[^>]*>/g, '').trim()
+        const textContent = stripHtmlTags(line).trim()
         
         // Skip empty lines
         if (textContent === '') continue

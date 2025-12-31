@@ -1,5 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
 
+// Safely strip HTML tags by looping until no more matches (prevents bypass with nested tags)
+function stripHtmlTags(str) {
+  let prev
+  do {
+    prev = str
+    str = str.replace(/<[^>]*>/g, "")
+  } while (str !== prev)
+  return str
+}
+
 // Wraps tab notation and chord+lyric groups intelligently.
 // - Tab notation: all strings break at the same position
 // - Chord+lyric groups: multiple chord lines + lyric line wrap together
@@ -452,7 +462,7 @@ export default class extends Controller {
       return false
     }
     // A chord line has span tags (chords) and is mostly whitespace
-    const htmlTextOnly = html.replace(/<[^>]*>/g, '')
+    const htmlTextOnly = stripHtmlTags(html)
     const nonSpaceChars = htmlTextOnly.replace(/\s/g, '').length
     const totalChars = htmlTextOnly.length
     
