@@ -7,6 +7,7 @@ export default class extends Controller {
   static targets = ["tooltip", "mobilePanel", "instrumentSelector", "dictionaryHeader", "dictionaryArrow", "dictionaryContent", "dictionaryGrid", "dictionaryChord", "mobileDictionaryHeader", "mobileDictionaryArrow", "mobileDictionaryContent", "mobileInlineChords", "stickyChordBar", "stickyDictionaryGrid", "stickyDictionaryChord", "stickyInstrumentDropdown"]
   static values = {
     instrument: { type: String, default: "guitar" },
+    tabInstrument: { type: String, default: "" },
     dictionaryCollapsed: { type: Boolean, default: false },
     mobileDictionaryCollapsed: { type: Boolean, default: false },
     stickyMode: { type: Boolean, default: false },
@@ -28,11 +29,21 @@ export default class extends Controller {
     // Use event delegation for chord spans (survives innerHTML changes from tab-wrapper)
     this.bindEventDelegation()
     
-    // Load saved instrument preference
-    const savedInstrument = localStorage.getItem("chordDiagramInstrument")
-    if (savedInstrument) {
-      this.instrumentValue = savedInstrument
+    // Set instrument based on tab's instrument (if supported), otherwise use saved preference
+    const supportedInstruments = ["guitar", "ukulele", "cavaquinho", "piano"]
+    const tabInstrument = this.tabInstrumentValue?.toLowerCase()
+    
+    if (tabInstrument && supportedInstruments.includes(tabInstrument)) {
+      // Use the tab's instrument
+      this.instrumentValue = tabInstrument
       this.updateInstrumentSelector()
+    } else {
+      // Fall back to saved preference or default
+      const savedInstrument = localStorage.getItem("chordDiagramInstrument")
+      if (savedInstrument) {
+        this.instrumentValue = savedInstrument
+        this.updateInstrumentSelector()
+      }
     }
     
     // Load desktop dictionary collapsed state

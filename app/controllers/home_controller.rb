@@ -2,6 +2,8 @@ class HomeController < ApplicationController
   def index
     @query = params[:q].to_s.strip
     @instrument = params[:instrument].to_s.strip.presence
+    @tab_type = params[:tab_type].to_s.strip.presence
+    @version = params[:version].to_s.strip.presence
 
     tabs = Tab
       .joins(song: :artist)
@@ -10,6 +12,16 @@ class HomeController < ApplicationController
     # Filter by instrument if selected
     if @instrument.present?
       tabs = tabs.where(instrument: @instrument)
+    end
+
+    # Filter by tab type if selected
+    if @tab_type.present?
+      tabs = tabs.where(tab_type: @tab_type)
+    end
+
+    # Filter by version if selected
+    if @version.present?
+      tabs = tabs.where(version_name: @version)
     end
 
     if @query.present?
@@ -27,7 +39,9 @@ class HomeController < ApplicationController
     # Pagy v43 API: pagy(:offset, collection)
     @pagy, @tabs = pagy(:offset, tabs)
 
-    # Get available instruments for the filter
+    # Get available options for filters
     @instruments = Tab.distinct.pluck(:instrument).compact.sort
+    @tab_types = Tab.distinct.pluck(:tab_type).compact.sort
+    @versions = Tab.distinct.pluck(:version_name).compact.sort
   end
 end

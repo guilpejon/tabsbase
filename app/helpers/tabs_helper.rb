@@ -51,7 +51,7 @@ module TabsHelper
   def render_ug_content(content)
     return "" if content.blank?
 
-    text = content.to_s
+    text = fix_malformed_chord_charts(content.to_s)
     nodes = []
     cursor = 0
     tab_buffer = []
@@ -119,6 +119,32 @@ module TabsHelper
 
   # Section markers that should have spacing before them
   SECTION_MARKERS = /^\s*\[(?:Verse|Chorus|Bridge|Break|Intro|Outro|Pre-Chorus|Post-Chorus|Interlude|Solo|Instrumental|Hook|Refrain).*\]/i
+
+  # Fix malformed chord charts where [tab] block ends too early
+  # Pattern: [tab]...[/tab] followed by lines of fingering data (0-9, x, spaces)
+  def fix_malformed_chord_charts(text)
+    # Match [/tab] followed by lines that look like chord fingering rows
+    # Fingering lines: mostly spaces, numbers 0-9, and 'x' characters
+    # Handle both \n and \r\n line endings
+    text.gsub(/\[\/tab\]((?:\r?\n[ \t]*[\d\sx]+)+)/i) do |_match|
+      trailing_lines = Regexp.last_match(1)
+
+      # Check if these lines are actually fingering data (not lyrics or chords)
+      lines = trailing_lines.strip.split(/\r?\n/)
+      all_fingering = lines.all? do |line|
+        stripped = line.strip
+        # Fingering line: only contains digits, x, and spaces, no letters except x
+        stripped.match?(/^[\d\sx]+$/) && stripped.length > 0
+      end
+
+      if all_fingering && lines.length >= 2
+        # Move the fingering lines inside the [tab] block
+        "#{trailing_lines}[/tab]"
+      else
+        "[/tab]#{trailing_lines}" # Keep original if not fingering data
+      end
+    end
+  end
 
   def render_ug_text_block(text)
     # Normalize spacing - remove all blank lines within blocks

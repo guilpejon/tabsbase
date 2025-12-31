@@ -1,9 +1,9 @@
 <% has_chords = tab_has_chords?(@tab.content) %>
 <% unique_chords = has_chords ? extract_unique_chords(@tab.content) : [] %>
 <% is_chord_tab = @tab.tab_type == "chords" %>
-<div class="w-full pb-16" data-controller="singer-mode<%= ' chord-diagram' if has_chords %><%= ' transpose' if is_chord_tab && has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
+<div class="w-full pb-16" data-controller="singer-mode<%= ' chord-diagram' if has_chords %><%= ' transpose' if is_chord_tab && has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-chord-diagram-tab-instrument-value="<%= @tab.instrument %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
   <div class="mb-6 px-4 sm:px-0">
-    <%= link_to "← Back to search", root_path(q: params[:q], instrument: params[:instrument]), class: "text-sm text-slate-600 hover:text-slate-900" %>
+    <%= link_to "← Back to search", root_path(q: params[:q], instrument: params[:instrument], tab_type: params[:tab_type], version: params[:version]), class: "text-sm text-slate-600 hover:text-slate-900" %>
 
     <div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
