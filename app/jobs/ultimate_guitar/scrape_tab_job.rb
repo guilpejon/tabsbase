@@ -15,6 +15,9 @@ module UltimateGuitar
     # Don't retry on duplicate key errors - the tab already exists
     discard_on ActiveRecord::RecordNotUnique
 
+    # Don't retry on skipped content (language filter, etc.) - just log and move on
+    discard_on UltimateGuitar::PageScraper::SkippedError
+
     def perform(url:)
       # Skip if we already have this tab
       if Tab.exists?(source_url: url)
@@ -30,6 +33,9 @@ module UltimateGuitar
 
       # Be polite
       sleep(rand(1.0..2.0))
+    rescue UltimateGuitar::PageScraper::SkippedError => e
+      Rails.logger.info "[UG Scrape] #{e.message}"
+      raise  # Let discard_on handle it
     rescue UltimateGuitar::PageScraper::Error => e
       Rails.logger.error "[UG Scrape] Failed to scrape #{url}: #{e.message}"
       raise

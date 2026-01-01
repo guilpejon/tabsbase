@@ -23,6 +23,7 @@ module UltimateGuitar
     class Error < StandardError; end
     class FetchError < Error; end
     class ParseError < Error; end
+    class SkippedError < Error; end  # For tabs we intentionally skip (language, etc.)
 
     DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36".freeze
     MAX_REDIRECTS = 3
@@ -71,6 +72,11 @@ module UltimateGuitar
       song_title = payload[:song_title]
       raise Error, "Missing artist_name from scraped payload" if artist_name.to_s.strip.empty?
       raise Error, "Missing song_title from scraped payload" if song_title.to_s.strip.empty?
+
+      # Skip non-Latin script content (Japanese, Chinese, Korean, Cyrillic, etc.)
+      unless LanguageFilter.allowed_content?(artist_name: artist_name, song_title: song_title)
+        raise SkippedError, "Skipping non-Latin content: #{artist_name} - #{song_title}"
+      end
 
       tab_attrs = payload.fetch(:tab)
       instrument = tab_attrs.fetch(:instrument)
