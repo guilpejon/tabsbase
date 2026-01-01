@@ -9,6 +9,17 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <% if Rails.env.production? && ENV["GOOGLE_ANALYTICS_ID"].present? %>
+      <!-- Google Analytics -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=<%= ENV["GOOGLE_ANALYTICS_ID"] %>"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '<%= ENV["GOOGLE_ANALYTICS_ID"] %>');
+      </script>
+    <% end %>
+
     <%= yield :head %>
 
     <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
