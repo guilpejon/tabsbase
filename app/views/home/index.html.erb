@@ -1,5 +1,5 @@
-<div class="w-full pb-16">
-  <div class="mb-12 px-4 sm:px-0 text-center">
+<div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5">
+  <div class="mb-12 text-center">
     <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900">Find your favorite tabs</h1>
     <p class="text-lg sm:text-xl text-slate-500 mt-4 max-w-xl mx-auto">Search guitar, ukulele, and bass tabs by artist or song title.</p>
 
@@ -33,46 +33,56 @@
     <% end %>
   </div>
 
-  <div class="flex items-baseline justify-between gap-4 mb-3 px-4 sm:px-0">
-    <h2 class="text-lg font-medium">
-      <%= @query.present? ? "Results" : "Tabs" %>
-    </h2>
-    <p class="text-sm text-slate-600">
-      <%= number_with_delimiter(@pagy.count) %> tabs
-      <% if @pagy.pages > 1 %>
-        • Page <%= @pagy.page %> of <%= @pagy.pages %>
-      <% end %>
-    </p>
-  </div>
+  <% if @has_active_search %>
+    <div class="flex items-baseline justify-between gap-4 mb-3">
+      <h2 class="text-lg font-medium">Results</h2>
+      <p class="text-sm text-slate-600">
+        <%= number_with_delimiter(@pagy.count) %> tabs
+        <% if @pagy.pages > 1 %>
+          • Page <%= @pagy.page %> of <%= @pagy.pages %>
+        <% end %>
+      </p>
+    </div>
 
-  <div class="divide-y divide-slate-200 sm:rounded-lg sm:border sm:border-slate-200 bg-white">
-    <% if @tabs.any? %>
-      <% @tabs.each do |tab| %>
-        <div class="px-4 py-3 sm:p-4 hover:bg-slate-50">
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-              <%= link_to tab_path(tab, q: @query, instrument: @instrument, tab_type: @tab_type, version: @version), class: "block" do %>
-                <span class="font-medium text-slate-900"><%= tab.display_name %></span>
-                <span class="block sm:hidden text-slate-500"><%= tab.tab_type_label %></span>
-                <span class="hidden sm:inline text-slate-500 sm:ml-1">(<%= tab.tab_type_label %>)</span>
-              <% end %>
+    <div class="divide-y divide-slate-200 sm:rounded-lg sm:border sm:border-slate-200 bg-white">
+      <% if @tabs.any? %>
+        <% @tabs.each do |tab| %>
+          <div class="px-4 py-3 sm:p-4 hover:bg-slate-50">
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <%= link_to tab_path(tab, q: @query, instrument: @instrument, tab_type: @tab_type, version: @version), class: "block" do %>
+                  <span class="font-medium text-slate-900"><%= tab.display_name %></span>
+                  <span class="block sm:hidden text-slate-500"><%= tab.tab_type_label %></span>
+                  <span class="hidden sm:inline text-slate-500 sm:ml-1">(<%= tab.tab_type_label %>)</span>
+                <% end %>
+              </div>
             </div>
           </div>
+        <% end %>
+      <% else %>
+        <div class="p-6 text-slate-600">
+          No tabs found. Try a different search.
         </div>
       <% end %>
-    <% else %>
-      <div class="p-6 text-slate-600">
-        No tabs found.
-        <% if @query.present? %>
-          Try a different search.
-        <% end %>
+    </div>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex justify-center">
+        <%= pagy_tailwind_nav(@pagy) %>
       </div>
     <% end %>
-  </div>
-
-  <% if @pagy.pages > 1 %>
-    <div class="mt-6 px-4 sm:px-0 flex justify-center">
-      <%= pagy_tailwind_nav(@pagy) %>
+  <% else %>
+    <div>
+      <h2 class="text-lg font-medium mb-3">Top Artists</h2>
+      <div class="divide-y divide-slate-200 sm:divide-y-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-3">
+        <% @top_artists.each do |artist| %>
+          <%= link_to root_path(q: artist.name),
+              class: "flex items-center justify-between gap-4 px-4 py-3 bg-white hover:bg-slate-50 sm:rounded-lg sm:border sm:border-slate-200 sm:hover:border-slate-300 transition-colors" do %>
+            <span class="font-medium text-slate-900"><%= artist.name %></span>
+            <span class="text-sm text-slate-500 shrink-0"><%= artist.tabs_count %> tabs</span>
+          <% end %>
+        <% end %>
+      </div>
     </div>
   <% end %>
 </div>

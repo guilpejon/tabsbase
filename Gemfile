@@ -63,4 +63,7 @@ gem "mission_control-jobs", "~> 1.1"
 # Pagination
 gem "pagy", "~> 43.2"
 
+# HTML entity decoding (for scraped content)
+gem "htmlentities"
+
 gem "lefthook", "~> 2.0", group: :development

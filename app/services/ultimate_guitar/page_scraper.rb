@@ -5,6 +5,7 @@ require "uri"
 require "zlib"
 require "stringio"
 require "cgi"
+require "htmlentities"
 
 module UltimateGuitar
   # Scrapes a single Ultimate Guitar tab page by extracting the embedded page-state JSON.
@@ -104,14 +105,14 @@ module UltimateGuitar
     attr_reader :user_agent, :timeout, :ssl_verify, :cookies, :headers
 
     def find_or_create_artist!(name)
-      name = name.to_s.strip
+      name = decode_html_entities(name.to_s).strip
       Artist.find_or_create_by!(name: name)
     rescue ActiveRecord::RecordNotUnique
       Artist.find_by!(name: name)
     end
 
     def find_or_create_song!(artist, title, genre: nil)
-      title = title.to_s.strip
+      title = decode_html_entities(title.to_s).strip
       song = Song.find_or_create_by!(artist: artist, title: title)
     rescue ActiveRecord::RecordNotUnique
       song = Song.find_by!(artist_id: artist.id, title: title)
@@ -763,6 +764,12 @@ module UltimateGuitar
       v = value.is_a?(String) ? value.strip : value
       return nil if v.nil? || (v.respond_to?(:empty?) && v.empty?)
       v
+    end
+
+    def decode_html_entities(text)
+      return text unless text.is_a?(String)
+      @html_coder ||= HTMLEntities.new
+      @html_coder.decode(text)
     end
 
     def integer_or_nil(value)
