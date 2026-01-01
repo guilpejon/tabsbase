@@ -64,9 +64,20 @@ namespace :db do
       system(scp_cmd) || abort("\n✗ SCP failed")
       puts "✓ Copied to server"
 
-      # Step 3: Import via SSH + docker exec
+      # Step 3: Truncate existing data on server
       puts "\n#{"=" * 50}"
-      puts "Step 3: Importing on server..."
+      puts "Step 3: Truncating existing data on server..."
+      puts "=" * 50
+      # Truncate in reverse order to respect foreign keys (tabs -> songs -> artists, tunings)
+      truncate_sql = "TRUNCATE TABLE tabs, songs, artists, tunings RESTART IDENTITY CASCADE;"
+      truncate_cmd = %Q(ssh #{remote_user}@#{remote_host} 'docker exec -i $(docker ps -qf "label=service=tabsbase" | head -1) sh -c "PGPASSWORD=\\$TABSBASE_DATABASE_PASSWORD psql -h tabsbase-db -U tabsbase -d tabsbase_production -c \\"#{truncate_sql}\\""')
+      puts "Running: #{truncate_cmd}"
+      system(truncate_cmd) || abort("\n✗ Truncate failed")
+      puts "✓ Tables truncated"
+
+      # Step 4: Import via SSH + docker exec
+      puts "\n#{"=" * 50}"
+      puts "Step 4: Importing on server..."
       puts "=" * 50
       import_cmd = %Q(ssh #{remote_user}@#{remote_host} 'docker exec -i $(docker ps -qf "label=service=tabsbase" | head -1) sh -c "PGPASSWORD=\\$TABSBASE_DATABASE_PASSWORD psql -h tabsbase-db -U tabsbase -d tabsbase_production" < #{remote_file}')
       puts "Running: #{import_cmd}"
