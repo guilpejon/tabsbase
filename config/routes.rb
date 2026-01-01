@@ -14,5 +14,9 @@ Rails.application.routes.draw do
 
   mount MissionControl::Jobs::Engine, at: "/jobs"
 
-  resources :tabs, only: [ :show ]
+  # Tab URLs: /tabs/:artist_slug/:slug (e.g., /tabs/radiohead/creep-guitar-chords)
+  get "tabs/:artist_slug/:slug", to: "tabs#show", as: :tab
+
+  # Artist URLs: /artists (browse by letter) and /artists/:slug (show)
+  resources :artists, only: [ :index, :show ], param: :slug
 end

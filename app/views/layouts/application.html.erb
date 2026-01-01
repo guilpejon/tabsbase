@@ -48,8 +48,21 @@
     </main>
 
     <footer class="border-t border-slate-200 bg-white mt-auto">
-      <div class="container mx-auto px-4 sm:px-5 py-6 max-w-6xl">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+      <div class="container mx-auto px-4 sm:px-5 py-8 max-w-6xl">
+        <!-- Alphabet Navigation -->
+        <div class="mb-6">
+          <p class="text-sm font-medium text-slate-700 mb-3">Browse Artists</p>
+          <div class="flex flex-wrap gap-1.5">
+            <%= link_to "#", artists_path(letter: "0-9"),
+                class: "w-8 h-8 flex items-center justify-center rounded text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors" %>
+            <% ("A".."Z").each do |letter| %>
+              <%= link_to letter, artists_path(letter: letter),
+                  class: "w-8 h-8 flex items-center justify-center rounded text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors" %>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500 pt-4 border-t border-slate-200">
           <p>&copy; <%= Date.current.year %> Tabsbase</p>
           <div class="flex items-center gap-6">
             <%= link_to "Home", root_path, class: "hover:text-slate-900 transition-colors" %>

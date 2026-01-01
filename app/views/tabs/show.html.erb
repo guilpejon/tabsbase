@@ -3,12 +3,22 @@
 <% is_chord_tab = @tab.tab_type == "chords" %>
 <div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5" data-controller="singer-mode<%= ' chord-diagram' if has_chords %><%= ' transpose' if is_chord_tab && has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-chord-diagram-tab-instrument-value="<%= @tab.instrument %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
   <div class="mb-6">
-    <%= link_to "← Back to search", root_path(q: params[:q], instrument: params[:instrument], tab_type: params[:tab_type], version: params[:version]), class: "text-sm text-slate-600 hover:text-slate-900" %>
+    <nav class="text-sm text-slate-500 mb-3">
+      <%= link_to "Home", root_path, class: "hover:text-slate-900" %>
+      <span class="mx-2">›</span>
+      <% first_letter = @tab.artist_name[0].upcase %>
+      <% letter_param = first_letter.match?(/[A-Z]/) ? first_letter : "0-9" %>
+      <%= link_to first_letter.match?(/[A-Z]/) ? first_letter : "#", artists_path(letter: letter_param), class: "hover:text-slate-900" %>
+      <span class="mx-2">›</span>
+      <%= link_to @tab.artist_name, artist_path(@tab.artist), class: "hover:text-slate-900" %>
+      <span class="mx-2">›</span>
+      <span class="text-slate-900"><%= @tab.song_title %></span>
+    </nav>
 
     <div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
         <h1 class="text-xl sm:text-2xl font-semibold tracking-tight">
-          <%= @tab.display_name %>
+          <%= link_to @tab.artist_name, artist_path(@tab.artist), class: "hover:text-slate-700" %> – <%= @tab.song_title %>
           <span class="text-base sm:text-lg font-normal text-slate-500">(<%= @tab.tab_type_label %>)</span>
         </h1>
         <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">

@@ -6,6 +6,9 @@ pre-commit:
   commands:
     rubocop:
       glob: "*.rb"
+      exclude:
+        - "db/schema.rb"
+        - "db/queue_schema.rb"
       run: bin/rubocop {staged_files}
       stage_fixed: true  # Auto-stage files fixed by rubocop -A
 

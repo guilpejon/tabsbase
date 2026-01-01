@@ -1,0 +1,58 @@
+<% content_for(:title) { "Artists starting with #{@letter} - Tabsbase" } %>
+
+<div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5">
+  <div class="mb-8">
+    <nav class="text-sm text-slate-500 mb-4">
+      <%= link_to "Home", root_path, class: "hover:text-slate-900" %>
+      <span class="mx-2">›</span>
+      <span class="text-slate-900">Artists: <%= @letter == "0-9" ? "#" : @letter %></span>
+    </nav>
+
+    <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
+      Artists starting with "<%= @letter == "0-9" ? "#" : @letter %>"
+    </h1>
+    <p class="text-slate-500 mt-2"><%= pluralize(@pagy.count, "artist") %> found</p>
+  </div>
+
+  <!-- Alphabet Navigation -->
+  <div class="mb-8 flex flex-wrap gap-2">
+    <%= link_to "#", artists_path(letter: "0-9"),
+        class: "w-9 h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors #{@letter == '0-9' ? 'bg-slate-900 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}" %>
+    <% ("A".."Z").each do |letter| %>
+      <%= link_to letter, artists_path(letter: letter),
+          class: "w-9 h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors #{@letter == letter ? 'bg-slate-900 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}" %>
+    <% end %>
+  </div>
+
+  <div class="flex items-baseline justify-between gap-4 mb-3">
+    <h2 class="text-lg font-medium">Artists</h2>
+    <% if @pagy.pages > 1 %>
+      <p class="text-sm text-slate-600">
+        Page <%= @pagy.page %> of <%= @pagy.pages %>
+      </p>
+    <% end %>
+  </div>
+
+  <div class="divide-y divide-slate-200 sm:divide-y-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-3">
+    <% if @artists.any? %>
+      <% @artists.each do |artist| %>
+        <%= link_to artist_path(artist),
+            class: "flex items-center justify-between gap-4 px-4 py-3 bg-white hover:bg-slate-50 sm:rounded-lg sm:border sm:border-slate-200 sm:hover:border-slate-300 transition-colors" do %>
+          <span class="font-medium text-slate-900"><%= artist.name %></span>
+          <span class="text-sm text-slate-500 shrink-0"><%= artist.tabs_count %> tabs</span>
+        <% end %>
+      <% end %>
+    <% else %>
+      <div class="col-span-full p-6 text-slate-600 bg-white sm:rounded-lg sm:border sm:border-slate-200">
+        No artists found starting with "<%= @letter == "0-9" ? "#" : @letter %>".
+      </div>
+    <% end %>
+  </div>
+
+  <% if @pagy.pages > 1 %>
+    <div class="mt-6 flex justify-center">
+      <%= pagy_tailwind_nav(@pagy) %>
+    </div>
+  <% end %>
+</div>
+

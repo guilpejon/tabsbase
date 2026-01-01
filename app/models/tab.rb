@@ -7,6 +7,10 @@ class Tab < ApplicationRecord
   validates :song_id, presence: true
   validates :instrument, presence: true
   validates :tuning_id, presence: true
+  validates :slug, uniqueness: true, allow_nil: true
+
+  before_validation :generate_slug, on: :create
+  before_save :generate_slug, if: :should_regenerate_slug?
 
   # Scopes
   scope :by_instrument, ->(instrument) { where(instrument: instrument) }
@@ -15,6 +19,16 @@ class Tab < ApplicationRecord
   scope :popular, -> { order(views_count: :desc) }
   scope :top_rated, -> { where.not(rating: nil).order(rating: :desc) }
   scope :recent, -> { order(created_at: :desc) }
+
+  # Use slug in URLs
+  def to_param
+    slug || id.to_s
+  end
+
+  # Find by slug or ID
+  def self.find_by_slug!(slug_or_id)
+    find_by(slug: slug_or_id) || find(slug_or_id)
+  end
 
   # Increment view count
   def increment_views!
@@ -39,5 +53,32 @@ class Tab < ApplicationRecord
     parts << tab_type.titleize if tab_type.present?
     parts << version_name.titleize if version_name.present?
     parts.join(" ")
+  end
+
+  private
+
+  def should_regenerate_slug?
+    song_id_changed? || instrument_changed? || tab_type_changed? || version_name_changed?
+  end
+
+  def generate_slug
+    return if song.blank?
+
+    # Build slug from song title + instrument + type + version
+    parts = [ song.title.parameterize ]
+    parts << instrument.parameterize if instrument.present?
+    parts << tab_type.parameterize if tab_type.present?
+    parts << version_name.parameterize if version_name.present?
+
+    base_slug = parts.join("-")
+    new_slug = base_slug
+    counter = 1
+
+    while Tab.where(slug: new_slug).where.not(id: id).exists?
+      counter += 1
+      new_slug = "#{base_slug}-#{counter}"
+    end
+
+    self.slug = new_slug
   end
 end

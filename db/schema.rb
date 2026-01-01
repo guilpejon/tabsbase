@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_26_135234) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_01_150431) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -19,8 +19,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_26_135234) do
     t.string "country"
     t.datetime "created_at", null: false
     t.string "name", null: false
+    t.string "slug"
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_artists_on_name", unique: true
+    t.index ["slug"], name: "index_artists_on_slug", unique: true
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|
@@ -167,6 +169,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_26_135234) do
     t.string "instrument", null: false
     t.decimal "rating", precision: 3, scale: 2
     t.integer "rating_count"
+    t.string "slug"
     t.bigint "song_id", null: false
     t.string "source_url"
     t.string "tab_type"
@@ -176,6 +179,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_26_135234) do
     t.integer "views_count", default: 0
     t.string "youtube_url"
     t.index ["instrument"], name: "index_tabs_on_instrument"
+    t.index ["slug"], name: "index_tabs_on_slug", unique: true
     t.index ["song_id", "instrument"], name: "index_tabs_on_song_id_and_instrument"
     t.index ["song_id"], name: "index_tabs_on_song_id"
     t.index ["tuning_id"], name: "index_tabs_on_tuning_id"
