@@ -5,7 +5,6 @@ require "uri"
 require "zlib"
 require "stringio"
 require "cgi"
-require "htmlentities"
 
 module UltimateGuitar
   # Scrapes a single Ultimate Guitar tab page by extracting the embedded page-state JSON.
