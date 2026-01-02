@@ -163,20 +163,13 @@ module TabsHelper
   def render_ug_tab_block(text)
     inner_html = ug_inline_format(text.to_s, chord_variant: :mono)
 
-    # Use different CSS classes for grouped tablature (bass/drums) to prevent individual line wrapping
-    is_grouped = has_grouped_tablature?(text)
-
-    css_class = "m-0 text-sm leading-6 text-slate-900 font-mono overflow-x-auto"
-    if is_grouped
-      # Grouped tablature (bass/drums): preserve all whitespace to keep lines grouped
-      # Use horizontal scroll on small screens instead of wrapping
-      css_class += " whitespace-pre"
-    else
-      # Other tablature: allow wrapping on mobile, preserve on desktop
-      css_class += " whitespace-pre-wrap md:whitespace-pre"
-    end
-
-    content_tag(:pre, inner_html, class: css_class)
+    # Don't use whitespace-pre - let JavaScript controller handle wrapping at natural break points
+    # overflow-x-auto as fallback for very wide content
+    content_tag(
+      :pre,
+      inner_html,
+      class: "m-0 text-sm leading-6 text-slate-900 font-mono overflow-x-auto"
+    )
   end
 
   # Section markers that should have spacing before them
@@ -186,13 +179,13 @@ module TabsHelper
     # Check for tablature patterns like |---|---|---| or string indicators like e| B| G| etc.
     # Also check for drum tablature patterns like Cr|, Ri|, Ch|, Cx|, T1|, T2|, Su|, BD|, SN|, HH|, etc.
     # And drum tablature with piece names like C |, H |, S |, B |
-    standard_tab = text.match?(/^\|[-\d\s]+\|$/)
-    guitar_strings = text.match?(/^[eBGDAE]\|$/)
+    standard_tab = text.match?(/^\|[-\d\s]+\|$/m)
+    guitar_strings = text.match?(/^[eBGDAE]\s*\|/m)
     # Check for bass strings with various formats: G|, G :, G:-, G|| etc.
-    bass_strings = (text.match?(/^[A-G][#b]?\s*:/m) || text.match?(/^[A-G][#b]?\s*-/m) || text.match?(/^[GDAE]\|/m) || text.match?(/^[A-G][#b]?\|\|/m)) && (!text.match?(/^[eE]\s*:/m) && !text.match?(/^[eE]\|/m) && !text.match?(/^[eE]\|\|/m))
-    drum_pieces = text.match?(/^[CHSB]\s*\|/) # Drum pieces: C |, H |, S |, B |
+    bass_strings = (text.match?(/^[A-G][#b]?\s*:/m) || text.match?(/^[A-G][#b]?\s*-/m) || text.match?(/^[GDAE]\s*\|/m) || text.match?(/^[A-G][#b]?\|\|/m)) && (!text.match?(/^[eE]\s*:/m) && !text.match?(/^[eE]\s*\|/m) && !text.match?(/^[eE]\|\|/m))
+    drum_pieces = text.match?(/^[CHSB]\s*\|/m) # Drum pieces: C |, H |, S |, B |
     other_indicators = text.match?(/Cr \|/) || text.match?(/Ri \|/) || text.match?(/Ch \|/)
-    drum_notation = text.match?(/^(?:Cr|Ri|Ch|Cx|T1|T2|Su|Bu|BD|SN|HH|FT|MT|HT|SD|LT)\s*\|/)
+    drum_notation = text.match?(/^(?:Cr|Ri|Ch|Cx|T1|T2|Su|Bu|BD|SN|HH|FT|MT|HT|SD|LT)\s*\|/m)
 
     standard_tab || guitar_strings || bass_strings || drum_pieces || other_indicators || drum_notation
   end
@@ -210,9 +203,9 @@ module TabsHelper
 
   def has_grouped_tablature?(text)
     # Check if this tablature should be grouped together on mobile (no internal wrapping)
-    # This includes bass tabs (4 strings) and drum tabs
+    # This includes guitar tabs (6 strings), bass tabs (4 strings) and drum tabs
     # These tabs are too dense to wrap effectively - use horizontal scroll instead
-    has_bass_tablature?(text) || has_drum_tablature?(text)
+    has_tablature?(text)
   end
 
   def has_drum_tablature?(text)
@@ -312,41 +305,22 @@ module TabsHelper
   end
 
   def render_ug_text_block(text)
-    # Check if this is chord/lyrics format (has chords above lyrics)
-    is_chord_lyrics = has_chord_lyrics_format?(text)
+    # Normalize spacing - remove all blank lines within blocks
+    normalized = text.to_s.gsub(/\n{2,}/, "\n").strip
+    html = ug_inline_format(normalized, chord_variant: :inline)
 
-    if is_chord_lyrics
-      # For chord/lyrics content, convert newlines to <br> tags to preserve formatting
-      html = ug_inline_format(text.to_s, chord_variant: :inline)
-      # Replace single newlines with <br>, double newlines with paragraph breaks
-      html = html.gsub(/\n\n+/, "</p><p>").gsub(/\n/, "<br>")
+    # Add top margin if this block starts with a section marker
+    starts_with_section = normalized.match?(SECTION_MARKERS)
 
-      # Add top margin if this block starts with a section marker
-      starts_with_section = text.match?(SECTION_MARKERS)
+    # All text blocks use pre-wrap for wrapping - CSS will handle mobile
+    css_class = "text-sm leading-6 text-slate-900 font-mono"
+    css_class += " mt-6" if starts_with_section
 
-      css_class = "text-sm leading-6 text-slate-900 font-mono"
-      css_class += " mt-6" if starts_with_section
-
-      # Wrap in a div with paragraphs for proper line spacing
-      content_tag(:div, "<p>#{html}</p>".html_safe, class: css_class)
-    else
-      # For regular text, normalize spacing
-      normalized = text.to_s.gsub(/\n{2,}/, "\n").strip
-      html = ug_inline_format(normalized, chord_variant: :inline)
-
-      # Add top margin if this block starts with a section marker
-      starts_with_section = normalized.match?(SECTION_MARKERS)
-
-      # All text blocks use pre-wrap for wrapping - CSS will handle mobile
-      css_class = "text-sm leading-6 text-slate-900 font-mono"
-      css_class += " mt-6" if starts_with_section
-
-      content_tag(
-        :div,
-        html,
-        class: css_class
-      )
-    end
+    content_tag(
+      :div,
+      html,
+      class: css_class
+    )
   end
 
   def ug_inline_format(text, chord_variant:)

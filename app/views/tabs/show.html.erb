@@ -24,7 +24,7 @@
         </h1>
         <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
           <% unless @tab.tuning.standard? %>
-            <span><%= @tab.tuning.full_name %></span>
+            <span class="break-words max-w-full"><%= @tab.tuning.full_name %></span>
           <% end %>
           <% if @tab.capo.present? %>
             <span><%= @tab.tuning.standard? ? "" : "• " %>Capo <%= @tab.capo %></span>

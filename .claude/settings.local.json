@@ -10,7 +10,8 @@
       "Bash(ruby -e:*)",
       "Bash(bundle update:*)",
       "Bash(timeout:*)",
-      "Bash(bin/brakeman:*)"
+      "Bash(bin/brakeman:*)",
+      "Bash(curl:*)"
     ]
   }
 }
