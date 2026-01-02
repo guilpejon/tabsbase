@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_02_175040) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_02_231019) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -176,7 +176,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_02_175040) do
     t.string "source", default: "ultimate_guitar"
     t.string "source_url"
     t.string "tab_type"
-    t.bigint "tuning_id", null: false
+    t.bigint "tuning_id"
     t.datetime "updated_at", null: false
     t.string "version_name"
     t.integer "views_count", default: 0

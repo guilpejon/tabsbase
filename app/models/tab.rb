@@ -1,6 +1,6 @@
 class Tab < ApplicationRecord
   belongs_to :song
-  belongs_to :tuning
+  belongs_to :tuning, optional: true
   has_one :artist, through: :song
 
   delegate :lyrics, to: :song, allow_nil: true
@@ -8,7 +8,7 @@ class Tab < ApplicationRecord
   validates :content, presence: true
   validates :song_id, presence: true
   validates :instrument, presence: true
-  validates :tuning_id, presence: true
+  validates :tuning_id, presence: true, unless: -> { instrument == "drums" }
   validates :slug, uniqueness: true, allow_nil: true
 
   # Default source for existing tabs

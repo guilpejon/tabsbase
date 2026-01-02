@@ -31,7 +31,7 @@ namespace :cifra_club do
   end
 
   desc "Scrape multiple artists (top 15 songs from each)"
-  task :scrape_artists => :environment do
+  task scrape_artists: :environment do
     artist_urls = [
       "https://www.cifraclub.com.br/anavitoria/",
       "https://www.cifraclub.com.br/armandinho/",

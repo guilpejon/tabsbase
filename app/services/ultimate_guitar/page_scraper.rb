@@ -52,6 +52,9 @@ module UltimateGuitar
     def scrape(url)
       uri = URI.parse(url)
       html = fetch_html(uri)
+      # Ensure HTML is properly encoded as UTF-8
+      html = html.force_encoding("UTF-8")
+      html = html.valid_encoding? ? html : html.encode("UTF-8", invalid: :replace, undef: :replace)
       page_state = extract_ugapp_page_state!(html)
       tab_payload = extract_tab_payload(page_state)
 
@@ -113,16 +116,58 @@ module UltimateGuitar
 
     def find_or_create_artist!(name)
       name = decode_html_entities(name.to_s).strip
-      Artist.find_or_create_by!(name: name)
+
+      # Try accent-insensitive match first (broader search)
+      normalized_name = normalize_for_search(name)
+      existing = Artist.all.find do |artist|
+        normalize_for_search(artist.name) == normalized_name
+      end
+      return existing if existing
+
+      # Try exact case-insensitive match
+      existing = Artist.where("LOWER(name) = ?", name.downcase).first
+      return existing if existing
+
+      Artist.create!(name: name)
     rescue ActiveRecord::RecordNotUnique
-      Artist.find_by!(name: name)
+      # Race condition - try finding again
+      Artist.all.find do |artist|
+        normalize_for_search(artist.name) == normalize_for_search(name)
+      end || Artist.where("LOWER(name) = ?", name.downcase).first || Artist.find_by!(name: name)
+    end
+
+    def normalize_for_search(text)
+      return text unless text.is_a?(String)
+      begin
+        # Force UTF-8 encoding
+        text = text.force_encoding("UTF-8").scrub
+        # Use Rails' transliterate for accent removal
+        I18n.transliterate(text).downcase.strip
+      rescue
+        # Fallback to simple downcase if transliterate fails
+        text.downcase.strip
+      end
     end
 
     def find_or_create_song!(artist, title, genre: nil)
       title = decode_html_entities(title.to_s).strip
+
+      # Try accent-insensitive match first (broader search)
+      normalized_title = normalize_for_search(title)
+      existing = artist.songs.find do |song|
+        normalize_for_search(song.title) == normalized_title
+      end
+      return existing if existing
+
+      # Try exact case-insensitive match
+      existing = artist.songs.where("LOWER(title) = ?", title.downcase).first
+      return existing if existing
+
       song = Song.find_or_create_by!(artist: artist, title: title)
     rescue ActiveRecord::RecordNotUnique
-      song = Song.find_by!(artist_id: artist.id, title: title)
+      song = artist.songs.find do |s|
+               normalize_for_search(s.title) == normalize_for_search(title)
+             end || artist.songs.where("LOWER(title) = ?", title.downcase).first || Song.find_by!(artist_id: artist.id, title: title)
     ensure
       if song && genre.present? && song.genre.blank?
         song.update!(genre: genre)
@@ -132,13 +177,30 @@ module UltimateGuitar
     def find_or_create_tuning!(instrument, tuning_attrs)
       name = tuning_attrs.fetch(:name).to_s.strip
       strings = tuning_attrs.fetch(:strings)
-      strings = Array(strings).map(&:to_s)
+      strings = Array(strings).map(&:to_s) if strings.present?
 
       # Normalize tuning name - if it looks like string notes, give it a proper name
       name = normalize_tuning_name(name, strings, instrument)
 
+      # First, try to find an existing tuning with the same strings (regardless of name)
+      if strings.present?
+        existing_tunings = Tuning.where(instrument: instrument).select do |t|
+          t.strings.present? && t.strings.map(&:to_s).sort == strings.map(&:to_s).sort
+        end
+
+        if existing_tunings.any?
+          # Prefer tunings with proper names over string-based names
+          proper_named = existing_tunings.find { |t| !t.name.match?(/^[A-G]/) }
+          return proper_named if proper_named
+
+          # Otherwise return the first one
+          return existing_tunings.first
+        end
+      end
+
+      # Otherwise, find or create by name
       tuning = Tuning.find_or_create_by!(instrument: instrument, name: name) do |t|
-        t.strings = strings
+        t.strings = strings if strings.present?
       end
     rescue ActiveRecord::RecordNotUnique
       tuning = Tuning.find_by!(instrument: instrument, name: name)
@@ -266,7 +328,7 @@ module UltimateGuitar
       body = response.body.to_s
       encoding = response["content-encoding"].to_s.downcase
 
-      case encoding
+      decoded_body = case encoding
       when "gzip"
         gz = Zlib::GzipReader.new(StringIO.new(body))
         gz.read
@@ -275,9 +337,15 @@ module UltimateGuitar
       else
         body
       end
+
+      # Ensure proper UTF-8 encoding
+      decoded_body.force_encoding("UTF-8")
+      decoded_body.valid_encoding? ? decoded_body : decoded_body.encode("UTF-8", invalid: :replace, undef: :replace)
     rescue Zlib::Error
       # If decoding fails, fall back to raw body to avoid masking useful HTML.
-      response.body.to_s
+      body = response.body.to_s
+      body.force_encoding("UTF-8")
+      body.valid_encoding? ? body : body.encode("UTF-8", invalid: :replace, undef: :replace)
     end
 
     def extract_ugapp_page_state!(html)
@@ -489,6 +557,9 @@ module UltimateGuitar
       content = tab_payload.dig("wiki_tab", "content") || tab_payload["content"]
       raise ParseError, "Tab content not found in payload" if content.to_s.strip.empty?
 
+      # Decode HTML entities in content
+      content = decode_html_entities(content)
+
       instrument = extract_instrument(tab_payload, page_state)
       tab_type = extract_tab_type(tab_payload, page_state)
       tuning_name, tuning_strings = extract_tuning(tab_payload)
@@ -590,17 +661,18 @@ module UltimateGuitar
     end
 
     def extract_artist_name(tab_payload, page_state)
-      presence(
+      name = presence(
         tab_payload["artist_name"] ||
         tab_payload.dig("artist", "name") ||
         page_state.dig("data", "tab_view", "artist_name") ||
         page_state.dig("data", "tab", "artist_name") ||
         page_state.dig("artist", "name")
       )
+      name ? decode_html_entities(name) : nil
     end
 
     def extract_song_title(tab_payload, page_state)
-      presence(
+      title = presence(
         tab_payload["song_name"] ||
         tab_payload["song_title"] ||
         tab_payload.dig("song", "song_name") ||
@@ -609,6 +681,7 @@ module UltimateGuitar
         page_state.dig("data", "tab", "song_name") ||
         page_state.dig("song", "song_name")
       )
+      title ? decode_html_entities(title) : nil
     end
 
     def extract_genre(tab_payload, page_state)
@@ -806,8 +879,15 @@ module UltimateGuitar
 
     def decode_html_entities(text)
       return text unless text.is_a?(String)
-      @html_coder ||= HTMLEntities.new
-      @html_coder.decode(text)
+      begin
+        # Force UTF-8 encoding to avoid encoding issues
+        text = text.force_encoding("UTF-8").scrub
+        @html_coder ||= HTMLEntities.new
+        @html_coder.decode(text)
+      rescue
+        # Return original text if decoding fails
+        text
+      end
     end
 
     def integer_or_nil(value)

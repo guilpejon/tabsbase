@@ -28,10 +28,11 @@ class HomeController < ApplicationController
       end
 
       if @query.present?
-        q = "%#{@query}%"
+        # Use PostgreSQL unaccent for efficient accent-insensitive search
+        normalized_query = "%#{normalize_for_search(@query)}%"
         tabs = tabs.where(
-          "artists.name ILIKE :q OR songs.title ILIKE :q",
-          q: q
+          "LOWER(UNACCENT(artists.name)) LIKE :q OR LOWER(UNACCENT(songs.title)) LIKE :q",
+          q: normalized_query
         )
 
         tabs = tabs.order("artists.name ASC, songs.title ASC, tabs.instrument ASC, tabs.created_at DESC")
@@ -41,6 +42,11 @@ class HomeController < ApplicationController
 
       # Pagy v43 API: pagy(:offset, collection)
       @pagy, @tabs = pagy(:offset, tabs)
+
+      # Group tabs by artist for display
+      if @query.present?
+        @grouped_tabs = @tabs.group_by(&:artist)
+      end
     else
       # No active search - show top 20 artists by combined views and tab count
       @top_artists = Artist
