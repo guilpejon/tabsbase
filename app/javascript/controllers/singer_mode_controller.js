@@ -16,13 +16,14 @@ export default class extends Controller {
   static targets = ["toggleButton"]
   static values = {
     enabled: { type: Boolean, default: false },
-    chordTab: { type: Boolean, default: false }
+    chordTab: { type: Boolean, default: false },
+    lyrics: { type: String, default: "" }
   }
 
   connect() {
-    // Only apply singer mode on chord-type tabs
-    // This prevents the mode from breaking non-chord tabs
-    if (!this.chordTabValue) {
+    // Only apply singer mode on chord-type tabs OR tabs with dedicated lyrics
+    // This prevents the mode from breaking non-chord tabs without lyrics
+    if (!this.chordTabValue && !this.hasMeaningfulLyrics()) {
       return
     }
     
@@ -42,8 +43,8 @@ export default class extends Controller {
   }
 
   toggle() {
-    // Only allow toggle on chord-type tabs
-    if (!this.chordTabValue) return
+    // Only allow toggle on chord-type tabs OR tabs with dedicated lyrics
+    if (!this.chordTabValue && !this.hasMeaningfulLyrics()) return
     
     this.enabledValue = !this.enabledValue
     localStorage.setItem("singerModeEnabled", this.enabledValue)
@@ -54,11 +55,15 @@ export default class extends Controller {
   applyMode() {
     if (this.enabledValue) {
       this.element.classList.add("singer-mode")
-      this.hideMusicalElements()
-      // Delay processing to ensure tab-wrapper has finished
-      setTimeout(() => {
-        this.processContentForSingerMode()
-      }, 200)
+      if (this.hasMeaningfulLyrics()) {
+        this.displayLyrics()
+      } else {
+        this.hideMusicalElements()
+        // Delay processing to ensure tab-wrapper has finished
+        setTimeout(() => {
+          this.processContentForSingerMode()
+        }, 200)
+      }
     } else {
       this.element.classList.remove("singer-mode")
       this.showMusicalElements()
@@ -136,49 +141,89 @@ export default class extends Controller {
     if (mobileDictionary) mobileDictionary.style.display = ''
   }
 
+  // Display dedicated lyrics (prioritizes over chord-hiding)
+  displayLyrics() {
+    // Find the main content container
+    const contentContainer = this.element.querySelector('[data-tab-wrapper-target="content"]')
+    if (!contentContainer) return
+
+    // Store the original HTML for restoration
+    if (!contentContainer.dataset.singerOriginalHtml) {
+      contentContainer.dataset.singerOriginalHtml = contentContainer.innerHTML
+    }
+
+    // Get lyrics from data attribute
+    const lyricsText = this.element.dataset.singerModeLyrics || ""
+    // Replace entire content with formatted lyrics
+    const lyricsHtml = this.formatLyricsAsHtml(lyricsText)
+    contentContainer.innerHTML = lyricsHtml
+  }
+
   // Process content blocks to remove chord spans and collapse empty lines
   processContentForSingerMode() {
     const contentBlocks = this.element.querySelectorAll('pre, div.font-mono')
-    
-    // Pattern to match chord-only lines (chord names like A, Am, C#m, Dm7, Bsus4, etc.)
+
+    // If we have dedicated lyrics, use those instead of processing mixed content
+    if (this.hasMeaningfulLyrics()) {
+      contentBlocks.forEach(block => {
+        // Skip tab notation blocks - they're hidden, not processed
+        if (block.dataset.tabNotation === 'true') return
+
+        // Store the original HTML for restoration
+        if (!block.dataset.singerOriginalHtml) {
+          block.dataset.singerOriginalHtml = block.dataset.originalHtml || block.innerHTML
+        }
+
+        // Replace content with lyrics
+        const lyricsText = this.element.dataset.singerModeLyrics || ""
+        const lyricsHtml = this.formatLyricsAsHtml(lyricsText)
+        block.innerHTML = lyricsHtml
+        if (block.dataset.originalHtml) {
+          block.dataset.originalHtml = lyricsHtml
+        }
+      })
+      return
+    }
+
+    // Fall back to processing mixed chord/lyrics content
     const chordPattern = /^[A-G][#b]?(m|maj|min|dim|aug|sus|add|dom)?[2-9]?(\/[A-G][#b]?)?$/
-    
+
     contentBlocks.forEach(block => {
       // Skip tab notation blocks - they're hidden, not processed
       if (block.dataset.tabNotation === 'true') return
-      
+
       // Store the tab-wrapper's original HTML (for restoration)
       if (!block.dataset.singerOriginalHtml) {
         // Get the HTML that tab-wrapper uses (its cached original)
         block.dataset.singerOriginalHtml = block.dataset.originalHtml || block.innerHTML
       }
-      
+
       // Process the content from the original source
       let html = block.dataset.singerOriginalHtml
-      
+
       // Remove all chord spans (inline chords)
       html = html.replace(/<span[^>]*data-chord[^>]*>.*?<\/span>/g, '')
-      
+
       // Split into lines and process
       const lines = html.split('\n')
       const processedLines = []
-      
+
       for (const line of lines) {
         // Get text content without HTML tags
         const textContent = stripHtmlTags(line).trim()
-        
+
         // Skip empty lines
         if (textContent === '') continue
-        
+
         // Skip lines that are only chord names (chord-only lines)
         if (this.isChordOnlyLine(textContent, chordPattern)) continue
-        
+
         // Keep this line
         processedLines.push(line.trim())
       }
-      
+
       const processedHtml = processedLines.join('\n')
-      
+
       // Update both the current innerHTML AND the tab-wrapper's cached original
       block.innerHTML = processedHtml
       if (block.dataset.originalHtml) {
@@ -187,13 +232,66 @@ export default class extends Controller {
     })
   }
 
+  // Format lyrics text as HTML with proper line breaks and structure
+  formatLyricsAsHtml(lyricsText) {
+    if (!lyricsText) return ''
+
+    // Handle case where lyrics might contain escaped newlines
+    let processedText = lyricsText
+    if (typeof lyricsText === 'string' && lyricsText.includes('\\n')) {
+      // Convert escaped newlines to actual newlines
+      processedText = lyricsText.replace(/\\n/g, '\n')
+    }
+
+    // Split into lines and add paragraph structure
+    const lines = processedText.split('\n')
+    const paragraphs = []
+    let currentParagraph = []
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim()
+
+      if (trimmed === '') {
+        // Empty line - end current paragraph
+        if (currentParagraph.length > 0) {
+          paragraphs.push(currentParagraph)
+          currentParagraph = []
+        }
+      } else {
+        currentParagraph.push(line)
+
+        // Start a new paragraph every 4-6 lines for better readability
+        if (currentParagraph.length >= 4 && lines[index + 1] && lines[index + 1].trim() !== '') {
+          // Check if next line continues the same thought (doesn't start with capital or bracket)
+          const nextLine = lines[index + 1].trim()
+          if (!nextLine.match(/^[A-Z[]/)) {
+            paragraphs.push(currentParagraph)
+            currentParagraph = []
+          }
+        }
+      }
+    })
+
+    // Add any remaining lines
+    if (currentParagraph.length > 0) {
+      paragraphs.push(currentParagraph)
+    }
+
+    // Convert to HTML
+    const htmlParagraphs = paragraphs.map(paragraph =>
+      `<p class="mb-4 leading-6">${paragraph.join('<br>')}</p>`
+    )
+
+    return `<div class="lyrics-text text-sm text-slate-900 font-sans">${htmlParagraphs.join('')}</div>`
+  }
+
   // Check if a line contains only chord names (no lyrics)
   isChordOnlyLine(text, chordPattern) {
     // Split by whitespace and check each word
     const words = text.split(/\s+/).filter(w => w.length > 0)
-    
+
     if (words.length === 0) return true
-    
+
     // Check if all words are chord names
     return words.every(word => {
       // Allow chord names and common chord notation characters (|, /, x, -)
@@ -204,8 +302,15 @@ export default class extends Controller {
 
   // Restore original content when exiting singer mode
   restoreOriginalContent() {
+    // First, check if the main content container was replaced with lyrics
+    const contentContainer = this.element.querySelector('[data-tab-wrapper-target="content"]')
+    if (contentContainer && contentContainer.dataset.singerOriginalHtml) {
+      contentContainer.innerHTML = contentContainer.dataset.singerOriginalHtml
+      return
+    }
+
+    // Otherwise, restore individual content blocks (for chord processing mode)
     const contentBlocks = this.element.querySelectorAll('pre, div.font-mono')
-    
     contentBlocks.forEach(block => {
       if (block.dataset.singerOriginalHtml) {
         const originalHtml = block.dataset.singerOriginalHtml
@@ -218,14 +323,20 @@ export default class extends Controller {
     })
   }
 
+  // Check if we have meaningful lyrics content (not null, undefined, or empty)
+  hasMeaningfulLyrics() {
+    const lyricsText = this.element.dataset.singerModeLyrics || ""
+    return lyricsText && lyricsText.trim() && lyricsText !== 'null'
+  }
+
   updateButtonState() {
     if (this.hasToggleButtonTarget) {
       if (this.enabledValue) {
-        this.toggleButtonTarget.classList.add("bg-amber-500", "text-white", "border-amber-500")
+        this.toggleButtonTarget.classList.add("bg-slate-600", "text-white", "border-slate-600")
         this.toggleButtonTarget.classList.remove("bg-white", "text-slate-600", "border-slate-200", "hover:bg-slate-100")
         this.toggleButtonTarget.setAttribute("title", "Exit Singer Mode")
       } else {
-        this.toggleButtonTarget.classList.remove("bg-amber-500", "text-white", "border-amber-500")
+        this.toggleButtonTarget.classList.remove("bg-slate-600", "text-white", "border-slate-600")
         this.toggleButtonTarget.classList.add("bg-white", "text-slate-600", "border-slate-200", "hover:bg-slate-100")
         this.toggleButtonTarget.setAttribute("title", "Singer Mode - Hide chords & tabs")
       }

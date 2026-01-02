@@ -1,7 +1,8 @@
-<% has_chords = tab_has_chords?(@tab.content) %>
-<% unique_chords = has_chords ? extract_unique_chords(@tab.content) : [] %>
+<% unique_chords = extract_unique_chords(@tab.content, @tab) %>
+<% has_chords = tab_has_chords?(@tab.content, @tab) %>
+<% has_lyrics = @tab.source == "cifra_club" ? @tab.song.lyrics.present? : has_significant_lyrics?(@tab.content) %>
 <% is_chord_tab = @tab.tab_type == "chords" %>
-<div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5" data-controller="singer-mode<%= ' chord-diagram' if has_chords %><%= ' transpose' if is_chord_tab && has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-chord-diagram-tab-instrument-value="<%= @tab.instrument %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
+<div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5" data-controller="<%= 'singer-mode' if has_lyrics %><%= ' chord-diagram' if has_chords %><%= ' transpose' if has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-chord-diagram-tab-instrument-value="<%= @tab.instrument %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-singer-mode-lyrics="<%= @tab.song.lyrics %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-transpose-has-key-value="<%= @tab.key.present? %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
   <div class="mb-6">
     <nav class="text-sm text-slate-500 mb-3">
       <%= link_to "Home", root_path, class: "hover:text-slate-900" %>
@@ -31,13 +32,16 @@
           <% if (safe_url = safe_external_url(@tab.source_url)) %>
             <span><%= (@tab.tuning.standard? && @tab.capo.blank?) ? "" : "• " %><%= link_to "Source", safe_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
           <% end %>
-          <% if (safe_url = safe_external_url(@tab.youtube_url)) %>
-            <span>• <%= link_to "Video", safe_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
+          <% if (lesson_url = safe_external_url(@tab.youtube_lesson_url)) %>
+            <span>• <%= link_to "Lesson", lesson_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
+          <% end %>
+          <% if (music_url = safe_external_url(@tab.song.youtube_music_url)) %>
+            <span>• <%= link_to "Music Video", music_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
           <% end %>
         </div>
       </div>
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <% if @tab.tab_type == "chords" && has_chords %>
+        <% if (@tab.tab_type == "chords" || @tab.source == "cifra_club") && has_chords %>
         <%# Transpose Controls - only for chord tabs with chords %>
         <div class="h-10 flex items-center gap-1.5 px-2 rounded-md border border-slate-200 bg-white">
           <button type="button"
@@ -63,31 +67,16 @@
             Reset
           </button>
         </div>
-        <%# Singer Mode Toggle Button - only for chord tabs %>
+        <% end %>
+        <%# Singer Mode Toggle Button - for chord tabs OR CifraClub tabs with lyrics %>
+        <% if @tab.tab_type == "chords" || (@tab.source == "cifra_club" && @tab.song.lyrics.present?) %>
         <button type="button"
                 class="h-10 px-3 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
                 data-singer-mode-target="toggleButton"
                 data-action="click->singer-mode#toggle"
-                title="Singer Mode - Hide chords & tabs">
+                title="Lyrics Mode - Hide chords & tabs">
           <span class="flex items-center gap-1.5">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-            </svg>
-            <span class="hidden sm:inline">Singer</span>
-          </span>
-        </button>
-        <% elsif @tab.tab_type == "chords" %>
-        <%# Singer Mode Toggle Button - only for chord tabs %>
-        <button type="button"
-                class="h-10 px-3 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
-                data-singer-mode-target="toggleButton"
-                data-action="click->singer-mode#toggle"
-                title="Singer Mode - Hide chords & tabs">
-          <span class="flex items-center gap-1.5">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-            </svg>
-            <span class="hidden sm:inline">Singer</span>
+            <span class="inline">Lyrics</span>
           </span>
         </button>
         <% end %>
@@ -211,7 +200,7 @@
       <%# No border/padding on mobile, add them back on sm: screens %>
       <div class="sm:rounded-lg sm:border sm:border-slate-200 bg-white sm:p-4" data-controller="tab-wrapper">
         <div data-tab-wrapper-target="content">
-          <%= render_ug_content(@tab.content) %>
+          <%= ApplicationController.helpers.render_ug_content(@tab.content) %>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { transposeChord, getChordRoot, NOTE_SEMITONES, CHROMATIC_NOTES_SHARP, getAllKeys } from "chord_data"
+import { transposeChord, getChordRoot, NOTE_SEMITONES, CHROMATIC_NOTES_SHARP, CHROMATIC_NOTES_FLAT, usesFlats, isMinor, getAllKeys } from "chord_data"
 
 // Handles chord transposition for tabs
 // Allows users to change the key of a song and see all chords updated
@@ -8,25 +8,28 @@ export default class extends Controller {
   static values = {
     originalChords: Array,
     semitones: { type: Number, default: 0 },
-    originalKey: String
+    originalKey: String,
+    hasKey: { type: Boolean, default: false }
   }
+
+  originalKeyMinor = false
   
   connect() {
     // Store the original chord elements and their positions
     this.chordElements = []
     this.originalKey = this.detectOriginalKey()
     this.originalKeyValue = this.originalKey
-    
+
     // Find all chord spans in the content
     this.collectChordElements()
-    
+
     // Restore saved transpose value for this session
     const savedSemitones = sessionStorage.getItem('transposeValue')
     if (savedSemitones) {
       this.semitonesValue = parseInt(savedSemitones, 10)
       this.applyTransposition()
     }
-    
+
     this.updateDisplays()
   }
   
@@ -41,18 +44,24 @@ export default class extends Controller {
   }
   
   detectOriginalKey() {
-    // Try to detect the original key from the first chord
-    if (this.originalChordsValue && this.originalChordsValue.length > 0) {
-      const firstChord = this.originalChordsValue[0]
-      return getChordRoot(firstChord) || 'C'
+    // If the tab has a key set, use it
+    if (this.hasKeyValue) {
+      if (this.originalChordsValue && this.originalChordsValue.length > 0) {
+        const firstChord = this.originalChordsValue[0]
+        this.originalKeyMinor = isMinor(firstChord)
+        return getChordRoot(firstChord) || 'C'
+      }
+
+      // Fall back to looking at the first chord element
+      const firstChordEl = this.element.querySelector('[data-chord]')
+      if (firstChordEl) {
+        this.originalKeyMinor = isMinor(firstChordEl.dataset.chord)
+        return getChordRoot(firstChordEl.dataset.chord) || 'C'
+      }
     }
-    
-    // Fall back to looking at the first chord element
-    const firstChordEl = this.element.querySelector('[data-chord]')
-    if (firstChordEl) {
-      return getChordRoot(firstChordEl.dataset.chord) || 'C'
-    }
-    
+
+    // For tabs without keys, don't try to detect - just use 'C' as a placeholder
+    this.originalKeyMinor = false
     return 'C'
   }
   
@@ -140,13 +149,13 @@ export default class extends Controller {
       const sign = this.semitonesValue > 0 ? '+' : ''
       this.semitoneDisplayTarget.textContent = `${sign}${this.semitonesValue}`
     }
-    
+
     // Update key display
     if (this.hasKeyDisplayTarget) {
       const currentKey = this.getCurrentKey()
       this.keyDisplayTarget.textContent = currentKey
     }
-    
+
     // Update key selector if present
     const keySelector = this.element.querySelector('[data-transpose-key-selector]')
     if (keySelector) {
@@ -156,10 +165,27 @@ export default class extends Controller {
   }
   
   getCurrentKey() {
+    // For tabs without keys, show the semitone offset with +/- sign
+    if (!this.hasKeyValue) {
+      const sign = this.semitonesValue > 0 ? '+' : ''
+      return `${sign}${this.semitonesValue}`
+    }
+
+    // For tabs with keys, show the actual key name
     const originalSemitone = NOTE_SEMITONES[this.originalKey] || 0
     let newSemitone = (originalSemitone + this.semitonesValue) % 12
     if (newSemitone < 0) newSemitone += 12
-    return CHROMATIC_NOTES_SHARP[newSemitone]
+
+    let keyName
+    // Use flat notation if the original key uses flats
+    if (usesFlats(this.originalKey)) {
+      keyName = CHROMATIC_NOTES_FLAT[newSemitone]
+    } else {
+      keyName = CHROMATIC_NOTES_SHARP[newSemitone]
+    }
+
+    // Append 'm' if the original key was minor
+    return this.originalKeyMinor ? keyName + 'm' : keyName
   }
   
   saveState() {

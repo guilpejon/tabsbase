@@ -83,7 +83,7 @@ module UltimateGuitar
 
       ActiveRecord::Base.transaction do
         artist = find_or_create_artist!(artist_name)
-        song = find_or_create_song!(artist, song_title, genre: payload[:genre])
+        song = find_or_create_song!(artist, song_title)
         tuning = find_or_create_tuning!(instrument, tuning_attrs)
 
         tab = find_or_initialize_tab!(song, url)
@@ -93,12 +93,14 @@ module UltimateGuitar
         tab.content = tab_attrs[:content]
         tab.difficulty = tab_attrs[:difficulty]
         tab.capo = tab_attrs[:capo]
+        tab.key = tab_attrs[:key]
         tab.rating = tab_attrs[:rating]
         tab.rating_count = tab_attrs[:rating_count]
         tab.views_count = tab_attrs[:views_count]
         tab.version_name = tab_attrs[:version_name]
-        tab.youtube_url = tab_attrs[:youtube_url]
+        tab.youtube_lesson_url = tab_attrs[:youtube_lesson_url]
         tab.source_url = url
+        tab.source = "ultimate_guitar"
 
         tab.save!
         tab
@@ -496,13 +498,14 @@ module UltimateGuitar
       rating_count = extract_rating_count(tab_payload, page_state)
       version_name = extract_version_name(tab_payload, page_state)
       capo = extract_capo(tab_payload, page_state)
+      key = extract_key(tab_payload, page_state)
 
       # Extract metadata for sanitization
       artist_name = extract_artist_name(tab_payload, page_state)
       song_title = extract_song_title(tab_payload, page_state)
 
       # Extract YouTube URL from content (if present)
-      youtube_url, content = extract_youtube_url(content)
+      youtube_lesson_url, content = extract_youtube_url(content)
 
       # Clean redundant header info from content
       content = sanitize_tab_content(content, {
@@ -518,7 +521,8 @@ module UltimateGuitar
         content: content,
         difficulty: difficulty,
         capo: capo,
-        youtube_url: youtube_url,
+        key: key,
+        youtube_lesson_url: youtube_lesson_url,
         rating: rating,
         rating_count: rating_count,
         views_count: views_count,
@@ -669,6 +673,35 @@ module UltimateGuitar
         page_state.dig("data", "tab_view", "meta", "capo") ||
         page_state.dig("data", "tab_view", "capo")
       )
+    end
+
+    def extract_key(tab_payload, page_state)
+      # Try to extract key from various fields in the Ultimate Guitar data
+      key = tab_payload["tonality"] ||
+            page_state.dig("data", "tab", "tonality") ||
+            page_state.dig("data", "tab_view", "meta", "tonality") ||
+            page_state.dig("data", "tab_view", "tonality")
+
+      return nil if key.nil?
+
+      # Normalize the key format (similar to Cifra Club logic)
+      # Convert to standard format like "Em", "F#", etc.
+      key = key.to_s.strip
+      return nil if key.empty?
+
+      # Ultimate Guitar sometimes uses different formats, normalize them
+      # Examples: "E minor", "F# major", "Em", "F#"
+      if key.match?(/^\s*([A-G][#b]?)\s+(minor|major)\s*$/i)
+        root = $1
+        quality = $2.downcase
+        quality = "m" if quality == "minor"
+        quality = "" if quality == "major"
+        key = root + quality
+      end
+
+      # Validate the key format
+      return key if key.match?(/^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?\d*$/i)
+      nil
     end
 
     def extract_version_name(tab_payload, page_state)

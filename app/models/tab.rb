@@ -3,11 +3,16 @@ class Tab < ApplicationRecord
   belongs_to :tuning
   has_one :artist, through: :song
 
+  delegate :lyrics, to: :song, allow_nil: true
+
   validates :content, presence: true
   validates :song_id, presence: true
   validates :instrument, presence: true
   validates :tuning_id, presence: true
   validates :slug, uniqueness: true, allow_nil: true
+
+  # Default source for existing tabs
+  before_validation :set_default_source, on: :create
 
   before_validation :generate_slug, on: :create
   before_save :generate_slug, if: :should_regenerate_slug?
@@ -80,5 +85,27 @@ class Tab < ApplicationRecord
     end
 
     self.slug = new_slug
+  end
+
+  def set_default_source
+    self.source ||= determine_source_from_url
+  end
+
+  def determine_source_from_url
+    return "ultimate_guitar" if source_url.blank?
+
+    uri = URI.parse(source_url)
+    host = uri.host&.downcase
+
+    case host
+    when /cifraclub\.com\.br/
+      "cifra_club"
+    when /ultimate-guitar\.com/, /tabs\.ultimate-guitar\.com/
+      "ultimate_guitar"
+    else
+      "unknown"
+    end
+  rescue URI::InvalidURIError
+    "unknown"
   end
 end

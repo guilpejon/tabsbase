@@ -14,29 +14,29 @@ module ApplicationHelper
 
     html = +%(<nav class="flex items-center gap-1" aria-label="Pagination">)
 
-    # Previous button
+    # Previous button - larger on mobile
     if pagy.page > 1
-      html << link_to("←", url_for(request.query_parameters.merge(page: pagy.page - 1)), class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100")
+      html << link_to("←", url_for(request.query_parameters.merge(page: pagy.page - 1)), class: "px-4 py-3 text-base sm:px-3 sm:py-2 sm:text-sm rounded-md hover:bg-slate-100 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center")
     else
-      html << %(<span class="px-3 py-2 text-sm text-slate-300">←</span>)
+      html << %(<span class="px-4 py-3 text-base sm:px-3 sm:py-2 sm:text-sm text-slate-300 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center">←</span>)
     end
 
-    # Page numbers with ellipsis
+    # Page numbers with ellipsis - larger on mobile
     (1..pagy.pages).each do |page_num|
       if page_num == pagy.page
-        html << %(<span class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white">#{page_num}</span>)
+        html << %(<span class="px-4 py-3 text-base sm:px-3 sm:py-2 sm:text-sm rounded-md bg-slate-900 text-white min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center">#{page_num}</span>)
       elsif page_num == 1 || page_num == pagy.pages || (page_num >= pagy.page - 2 && page_num <= pagy.page + 2)
-        html << link_to(page_num, url_for(request.query_parameters.merge(page: page_num)), class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100")
+        html << link_to(page_num, url_for(request.query_parameters.merge(page: page_num)), class: "px-4 py-3 text-base sm:px-3 sm:py-2 sm:text-sm rounded-md hover:bg-slate-100 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center")
       elsif page_num == 2 || page_num == pagy.pages - 1
-        html << %(<span class="px-2 py-2 text-slate-400">…</span>)
+        html << %(<span class="px-3 py-3 text-slate-400 min-w-[44px] min-h-[44px] sm:px-2 sm:py-2 sm:min-w-0 sm:min-h-0 flex items-center justify-center">…</span>)
       end
     end
 
-    # Next button
+    # Next button - larger on mobile
     if pagy.page < pagy.pages
-      html << link_to("→", url_for(request.query_parameters.merge(page: pagy.page + 1)), class: "px-3 py-2 text-sm rounded-md hover:bg-slate-100")
+      html << link_to("→", url_for(request.query_parameters.merge(page: pagy.page + 1)), class: "px-4 py-3 text-base sm:px-3 sm:py-2 sm:text-sm rounded-md hover:bg-slate-100 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center")
     else
-      html << %(<span class="px-3 py-2 text-sm text-slate-300">→</span>)
+      html << %(<span class="px-4 py-3 text-base sm:px-3 sm:py-2 sm:text-sm text-slate-300 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center">→</span>)
     end
 
     html << %(</nav>)

@@ -47,34 +47,36 @@ export default class extends Controller {
 
   processTabBlock(pre, containerWidth) {
     const originalText = pre.dataset.originalText || pre.textContent
-    
+
     if (!pre.dataset.originalText) {
       pre.dataset.originalText = originalText
       pre.dataset.originalHtml = pre.innerHTML
     }
-    
+
     const html = pre.dataset.originalHtml
     const text = pre.dataset.originalText
-    
+
+    // Skip wrapping for grouped tablature (bass/drums) - they use horizontal scroll
+    if (pre.classList.contains('whitespace-pre')) {
+      return
+    }
+
     // Check if this is tab notation (G|---, e|---, etc.) or chord sheet
     if (this.hasTabNotation(text)) {
       pre.innerHTML = this.wrapTabBlock(html, text, containerWidth, pre)
-      pre.style.whiteSpace = 'pre'
+      // Only set whiteSpace if it's not already set by CSS classes
+      if (!pre.classList.contains('whitespace-pre-wrap')) {
+        pre.style.whiteSpace = 'pre'
+      }
       pre.style.overflowWrap = 'normal'
       pre.dataset.tabNotation = 'true'
     } else if (html.includes('<span')) {
       // Chord sheet - chord lines have spans, need to wrap properly
-      // Chord sheet in a pre block - wrap properly
-      pre.style.whiteSpace = 'pre-wrap'
-      pre.style.wordBreak = 'break-word'
-      pre.style.overflowWrap = 'break-word'
-      pre.style.maxWidth = '100%'
-      pre.style.overflowX = 'hidden'
-      
+      // Don't override CSS classes - let them handle the whitespace
       const charWidth = this.measureCharWidth(pre)
       const availableWidth = containerWidth - 32
       const charsPerLine = Math.floor(availableWidth / charWidth)
-      
+
       if (charsPerLine > 10 && this.hasChordLyricPairStructure(html, text)) {
         pre.innerHTML = this.wrapChordLyricPairs(html, text, charsPerLine)
       } else {
@@ -82,12 +84,17 @@ export default class extends Controller {
       }
     } else if (this.usesSpacingForAlignment(text)) {
       // ASCII chord diagrams - preserve spacing
-      pre.style.whiteSpace = 'pre'
+      if (!pre.classList.contains('whitespace-pre-wrap')) {
+        pre.style.whiteSpace = 'pre'
+      }
       pre.style.overflowWrap = 'normal'
     } else {
-      // Plain text in a <pre> block
-      pre.style.whiteSpace = 'pre-wrap'
-      pre.style.overflowWrap = 'break-word'
+      // Plain text in a <pre> block - ensure it can wrap
+      // Only set if not already handled by CSS classes
+      if (!pre.classList.contains('whitespace-pre-wrap') && !pre.classList.contains('whitespace-pre')) {
+        pre.style.whiteSpace = 'pre-wrap'
+        pre.style.overflowWrap = 'break-word'
+      }
     }
   }
   
@@ -108,10 +115,12 @@ export default class extends Controller {
     const html = div.dataset.originalHtml
     const text = div.dataset.originalText
     
-    // Set styles for proper display - pre-wrap preserves whitespace AND wraps
-    div.style.whiteSpace = 'pre-wrap'
-    div.style.wordBreak = 'break-word'
-    div.style.overflowWrap = 'break-word'
+    // Set styles for proper display - only if not already set by CSS classes
+    if (!div.classList.contains('whitespace-pre-wrap')) {
+      div.style.whiteSpace = 'pre-wrap'
+      div.style.wordBreak = 'break-word'
+      div.style.overflowWrap = 'break-word'
+    }
     div.style.maxWidth = '100%'
     div.style.overflowX = 'hidden'
     
@@ -770,12 +779,15 @@ export default class extends Controller {
   hasTabNotation(text) {
     // Match lines starting with string letter + optional flat (b) + optional spaces + | or -
     // OR lines starting directly with |
-    // OR lines that start with dashes/numbers (tab continuation)
     // OR drum tabs: CC, HH, SD, BD, RC, LT, FT, MT, HT, etc.
     const tabLinePattern = /^[A-Ga-g][#b]?\s*[\|\-]/m
     const drumTabPattern = /^[A-Z]{2}\s*[\|\-xo]/m
     const pipeOnlyPattern = /^\|[\-0-9]/m
-    const dashLinePattern = /^[\-0-9]{3,}/m // Lines starting with 3+ dashes/numbers
+
+    // Only match dash lines if they look like actual tab continuation (not just any dashes/numbers)
+    // Tab continuation should have dashes that align with string positions
+    const dashLinePattern = /^[\-0-9]{6,}/m // At least 6 consecutive dashes/numbers (typical for guitar tabs)
+
     return tabLinePattern.test(text) || drumTabPattern.test(text) || pipeOnlyPattern.test(text) || dashLinePattern.test(text)
   }
 
@@ -941,40 +953,48 @@ export default class extends Controller {
 
   wrapTabGroup(htmlLines, textLines, charsPerLine) {
     const maxLen = Math.max(...textLines.map(l => l.length))
-    
+
     if (maxLen <= charsPerLine) {
       // No wrapping needed, but still return with a trailing empty line for spacing between groups
       return [...htmlLines, '']
     }
-    
+
     // Find natural break points - look for | characters that appear in most lines near the target position
     const breakPoints = this.findNaturalBreakPoints(textLines, charsPerLine, maxLen)
-    
+
     const result = []
     let prevPos = 0
-    
+
     for (const breakPos of breakPoints) {
       const chunk = htmlLines.map((html, idx) => {
         return this.sliceHtmlByTextPosition(html, textLines[idx], prevPos, breakPos)
       })
-      const nonEmptyChunk = chunk.filter(line => line.trim() !== '')
+      // Keep ALL lines including empty ones to maintain vertical alignment
+      // Only filter out lines that were completely blank in the original
+      const preservedChunk = chunk.map((line, idx) => {
+        // If the original line was not empty, preserve it even if it's now empty after slicing
+        return textLines[idx] ? line : ''
+      })
       // No empty line between wrapped chunks - keep them close together
-      result.push(...nonEmptyChunk)
+      result.push(...preservedChunk)
       prevPos = breakPos
     }
-    
+
     // Add remaining content after last break point
     if (prevPos < maxLen) {
       const chunk = htmlLines.map((html, idx) => {
         return this.sliceHtmlByTextPosition(html, textLines[idx], prevPos, maxLen)
       })
-      const nonEmptyChunk = chunk.filter(line => line.trim() !== '')
-      result.push(...nonEmptyChunk)
+      // Keep ALL lines including empty ones to maintain vertical alignment
+      const preservedChunk = chunk.map((line, idx) => {
+        return textLines[idx] ? line : ''
+      })
+      result.push(...preservedChunk)
     }
-    
+
     // Add trailing empty line for spacing between different tab groups
     result.push('')
-    
+
     return result
   }
   

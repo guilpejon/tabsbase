@@ -1,26 +1,71 @@
 module TabsHelper
   TAB_BLOCK_RE = /\[tab\](.*?)\[\/tab\]/m
   CHORD_RE = /\[ch\](.*?)\[\/ch\]/m
+  # Regex for inline chords (not wrapped in [ch] tags)
+  # Matches chord patterns like: C, C7, Cm, Cmaj7, C#dim, Db9, etc.
+  # Requires uppercase root note to avoid matching English words like "am"
+  INLINE_CHORD_RE = /(?<=\W|^)[A-G][#b]?(?:maj|min|m|dim|aug|sus\d*|add\d*|7M|7|9|11|13|6|5|4|2|1|0)*(?:\([^)]+\))?(?:\/[A-G][#b]?)?(?=\W|$)/
 
-  # Check if content contains any chord tags
-  def tab_has_chords?(content)
+
+  # Check if content contains any chords (tagged or inline)
+  def tab_has_chords?(content, tab = nil)
     return false if content.blank?
-    content.to_s.match?(CHORD_RE)
+    # Skip chord detection for bass tabs
+    return false if tab&.instrument&.downcase == "bass"
+    # Check for tagged chords
+    return true if content.to_s.match?(CHORD_RE)
+    # Check for actual inline chords (not just tablature string names)
+    extract_unique_chords(content, tab).present?
   end
 
   # Extract all unique chord names from content, preserving order of first appearance
-  def extract_unique_chords(content)
+  def extract_unique_chords(content, tab = nil)
     return [] if content.blank?
+    # Skip chord extraction for bass tabs
+    return [] if tab&.instrument&.downcase == "bass"
 
     chords = []
     seen = Set.new
 
+    # Extract from tagged chords [ch]...[/ch]
     content.to_s.scan(CHORD_RE) do |match|
       chord = decode_html_entities(match[0].to_s.strip)
-      unless seen.include?(chord)
+      unless chord.blank? || seen.include?(chord)
         seen.add(chord)
         chords << chord
       end
+    end
+
+    # Extract from inline chords
+    content.to_s.scan(INLINE_CHORD_RE) do |match|
+      chord = match.to_s.strip
+      next if chord.blank? || seen.include?(chord)
+
+      # Filter out likely false positives:
+      # - Single lowercase letters that are common in words (like 'a' in 'casa')
+      next if chord.length == 1 && chord.match?(/^[a-z]$/)
+
+      # Filter out tablature string labels (chord followed by tablature indicators)
+      match_position = Regexp.last_match.offset(0)[0]
+      following_text = content[match_position + chord.length, 100] || ""
+      # Check for various tablature formats: |, :, -, etc. (including on next line)
+      next if following_text.match?(/[\|:\-\|]+/)
+      # Also check if this chord appears to be a tablature string name followed by dashes on the next line
+      next if content[match_position..match_position + 200].match?(/^#{Regexp.escape(chord)}\s*\n\s*\|[\-\|]+/m)
+      # Special check for single letters that might be tablature string names
+      if chord.length == 1 && chord.match?(/^[A-G]$/)
+        # Check if this looks like a tablature line (chord followed by |--- or similar)
+        next if following_text.match?(/^\s*\|[\-\|]+/)
+      end
+
+      # Filter out chords in instructional text about strings/tuning
+      context_start = [ 0, match_position - 50 ].max
+      context_end = [ content.length, match_position + chord.length + 50 ].min
+      surrounding_context = content[context_start..context_end]
+      next if surrounding_context && surrounding_context.match?(/string|tune|tuning| capo|capotraste/i)
+
+      seen.add(chord)
+      chords << chord
     end
 
     chords
@@ -49,9 +94,20 @@ module TabsHelper
   # - [tab]...[/tab] blocks: rendered as a distinct preformatted block
   # - [ch]...[/ch] chords: rendered as styled inline spans (style differs inside/outside [tab])
   def render_ug_content(content)
-    return "" if content.blank?
+    return "DEBUG: content length #{content.to_s.length}" if content.blank?
 
     text = fix_malformed_chord_charts(content.to_s)
+
+    # Check if this content contains [tab] blocks (Ultimate Guitar format)
+    # If so, parse them individually - this takes precedence over other logic
+    if text.match?(TAB_BLOCK_RE)
+      # Continue to parse [tab] blocks below (don't return early)
+    elsif has_tablature?(text)
+      # Check if this is Cifra Club content (doesn't use [tab] tags)
+      # If it contains tablature patterns, treat the whole thing as a tab block
+      return render_ug_tab_block(text)
+    end
+
     nodes = []
     cursor = 0
     tab_buffer = []
@@ -107,18 +163,127 @@ module TabsHelper
   def render_ug_tab_block(text)
     inner_html = ug_inline_format(text.to_s, chord_variant: :mono)
 
-    # Use whitespace-pre to preserve formatting, and overflow-x: auto for horizontal scroll
-    # as a fallback when JavaScript wrapping doesn't trigger (instead of overflow-wrap: anywhere
-    # which causes ugly character-level breaks)
-    content_tag(
-      :pre,
-      inner_html,
-      class: "m-0 text-sm leading-6 text-slate-900 whitespace-pre font-mono overflow-x-auto"
-    )
+    # Use different CSS classes for grouped tablature (bass/drums) to prevent individual line wrapping
+    is_grouped = has_grouped_tablature?(text)
+
+    css_class = "m-0 text-sm leading-6 text-slate-900 font-mono overflow-x-auto"
+    if is_grouped
+      # Grouped tablature (bass/drums): preserve all whitespace to keep lines grouped
+      # Use horizontal scroll on small screens instead of wrapping
+      css_class += " whitespace-pre"
+    else
+      # Other tablature: allow wrapping on mobile, preserve on desktop
+      css_class += " whitespace-pre-wrap md:whitespace-pre"
+    end
+
+    content_tag(:pre, inner_html, class: css_class)
   end
 
   # Section markers that should have spacing before them
   SECTION_MARKERS = /^\s*\[(?:Verse|Chorus|Bridge|Break|Intro|Outro|Pre-Chorus|Post-Chorus|Interlude|Solo|Instrumental|Hook|Refrain).*\]/i
+
+  def has_tablature?(text)
+    # Check for tablature patterns like |---|---|---| or string indicators like e| B| G| etc.
+    # Also check for drum tablature patterns like Cr|, Ri|, Ch|, Cx|, T1|, T2|, Su|, BD|, SN|, HH|, etc.
+    # And drum tablature with piece names like C |, H |, S |, B |
+    standard_tab = text.match?(/^\|[-\d\s]+\|$/)
+    guitar_strings = text.match?(/^[eBGDAE]\|$/)
+    # Check for bass strings with various formats: G|, G :, G:-, G|| etc.
+    bass_strings = (text.match?(/^[A-G][#b]?\s*:/m) || text.match?(/^[A-G][#b]?\s*-/m) || text.match?(/^[GDAE]\|/m) || text.match?(/^[A-G][#b]?\|\|/m)) && (!text.match?(/^[eE]\s*:/m) && !text.match?(/^[eE]\|/m) && !text.match?(/^[eE]\|\|/m))
+    drum_pieces = text.match?(/^[CHSB]\s*\|/) # Drum pieces: C |, H |, S |, B |
+    other_indicators = text.match?(/Cr \|/) || text.match?(/Ri \|/) || text.match?(/Ch \|/)
+    drum_notation = text.match?(/^(?:Cr|Ri|Ch|Cx|T1|T2|Su|Bu|BD|SN|HH|FT|MT|HT|SD|LT)\s*\|/)
+
+    standard_tab || guitar_strings || bass_strings || drum_pieces || other_indicators || drum_notation
+  end
+
+  def has_bass_tablature?(text)
+    # Check if this is specifically bass tablature (typically 4 strings, various tunings)
+    # Look for patterns that indicate bass tabs without guitar high strings
+    # Common bass tunings: GDAE, GDAC#, etc. Various formats: G|, G :, G:-, G||
+    has_bass_patterns = text.match?(/^[A-G][#b]?\s*:/m) || text.match?(/^[A-G][#b]?\s*-/m) || text.match?(/^[GDAE]\|/m) || text.match?(/^[A-G][#b]?\|\|/m)
+    no_guitar_high_strings = !text.match?(/^[eE]\s*:/m) && !text.match?(/^[eE]\|/m) && !text.match?(/^[eE]\|\|/m)
+    bass_indicators = text.match?(/bass/i) || text.match?(/baixo/i)
+
+    (has_bass_patterns && no_guitar_high_strings) || bass_indicators
+  end
+
+  def has_grouped_tablature?(text)
+    # Check if this tablature should be grouped together on mobile (no internal wrapping)
+    # This includes bass tabs (4 strings) and drum tabs
+    # These tabs are too dense to wrap effectively - use horizontal scroll instead
+    has_bass_tablature?(text) || has_drum_tablature?(text)
+  end
+
+  def has_drum_tablature?(text)
+    # Check for common drum notation patterns (both 2-letter and 1-letter with space)
+    # Examples: BD|, SN|, HH|, CC|, Cr|, Ch|, C |, H |, S |, B |, etc.
+    # Allow leading whitespace with ^\s*
+    drum_patterns = [
+      /^\s*(?:CC|HH|SD|BD|SN|FT|MT|HT|LT|RC|RD|CR|Cr|Ri|Ch|Cx|T1|T2|T3|Su|Bu)\s*[\|\-xo]/m,  # Two-letter drum notation
+      /^\s*(?:C|H|S|B)\s+[\|\-xo]/m  # Single letter with space (C |, H |, S |, B |)
+    ]
+    drum_patterns.any? { |pattern| text.match?(pattern) }
+  end
+
+  def has_significant_lyrics?(content)
+    return false if content.blank?
+
+    lines = content.lines
+    return false if lines.length < 10  # Too short to analyze
+
+    tablature_lines = 0
+    lyric_lines = 0
+
+    lines.each do |line|
+      stripped = line.strip
+      next if stripped.empty?
+
+      # Count tablature lines
+      if stripped.match?(/^[A-G][#b]?(?:\s*[\|:\-]|[\|:\-])/) || stripped.match?(/^\|[-\d\s]+\|/)
+        tablature_lines += 1
+      # Count potential lyric lines (not section markers, not tablature, not too short)
+      elsif !stripped.match?(/^\[.*\]$/) && !stripped.match?(/^\(.*\)$/) && stripped.length > 3
+        lyric_lines += 1
+      end
+    end
+
+    # Has significant lyrics if more than 5 lyric lines and lyrics > 10% of content
+    lyric_lines > 5 && (lyric_lines.to_f / lines.length) > 0.1
+  end
+
+  def has_chord_lyrics_format?(text)
+    lines = text.lines
+    return false if lines.length < 10  # Need some content to analyze
+
+    # Look for chord/lyrics patterns:
+    # 1. Lines with just chords (short lines with chord symbols)
+    # 2. Lines with lyrics (longer lines with text)
+    # 3. Alternating pattern of short chord lines and longer lyric lines
+
+    chord_lines = 0
+    lyric_lines = 0
+    total_lines = 0
+
+    lines.each do |line|
+      stripped = line.strip
+      next if stripped.empty?
+
+      total_lines += 1
+      break if total_lines > 50  # Only check first 50 lines
+
+      # Count chord lines (short lines that look like chords)
+      if stripped.length <= 15 && stripped.match?(/[A-G]#?(?:maj|min|m|dim|aug|sus|add)?\d*(?:\/[A-G]#?)?/)
+        chord_lines += 1
+      # Count lyric lines (longer lines with text)
+      elsif stripped.length > 15 && stripped.match?(/[a-zA-Z]/)
+        lyric_lines += 1
+      end
+    end
+
+    # If we have a significant number of both chord and lyric lines, it's likely chord/lyrics format
+    chord_lines >= 3 && lyric_lines >= 3 && chord_lines + lyric_lines >= total_lines * 0.6
+  end
 
   # Fix malformed chord charts where [tab] block ends too early
   # Pattern: [tab]...[/tab] followed by lines of fingering data (0-9, x, spaces)
@@ -147,33 +312,83 @@ module TabsHelper
   end
 
   def render_ug_text_block(text)
-    # Normalize spacing - remove all blank lines within blocks
-    normalized = text.to_s.gsub(/\n{2,}/, "\n").strip
-    html = ug_inline_format(normalized, chord_variant: :inline)
+    # Check if this is chord/lyrics format (has chords above lyrics)
+    is_chord_lyrics = has_chord_lyrics_format?(text)
 
-    # Add top margin if this block starts with a section marker
-    starts_with_section = normalized.match?(SECTION_MARKERS)
+    if is_chord_lyrics
+      # For chord/lyrics content, convert newlines to <br> tags to preserve formatting
+      html = ug_inline_format(text.to_s, chord_variant: :inline)
+      # Replace single newlines with <br>, double newlines with paragraph breaks
+      html = html.gsub(/\n\n+/, "</p><p>").gsub(/\n/, "<br>")
 
-    # All text blocks use pre-wrap for wrapping - CSS will handle mobile
-    css_class = "text-sm leading-6 text-slate-900 font-mono"
-    css_class += " mt-6" if starts_with_section
+      # Add top margin if this block starts with a section marker
+      starts_with_section = text.match?(SECTION_MARKERS)
 
-    content_tag(
-      :div,
-      html,
-      class: css_class
-    )
+      css_class = "text-sm leading-6 text-slate-900 font-mono"
+      css_class += " mt-6" if starts_with_section
+
+      # Wrap in a div with paragraphs for proper line spacing
+      content_tag(:div, "<p>#{html}</p>".html_safe, class: css_class)
+    else
+      # For regular text, normalize spacing
+      normalized = text.to_s.gsub(/\n{2,}/, "\n").strip
+      html = ug_inline_format(normalized, chord_variant: :inline)
+
+      # Add top margin if this block starts with a section marker
+      starts_with_section = normalized.match?(SECTION_MARKERS)
+
+      # All text blocks use pre-wrap for wrapping - CSS will handle mobile
+      css_class = "text-sm leading-6 text-slate-900 font-mono"
+      css_class += " mt-6" if starts_with_section
+
+      content_tag(
+        :div,
+        html,
+        class: css_class
+      )
+    end
   end
 
   def ug_inline_format(text, chord_variant:)
     # First decode HTML entities from the source (e.g., &rsquo; -> ')
     decoded = decode_html_entities(text)
 
-    # Then escape for safe HTML output
+    # Escape the text for HTML safety
     escaped = ERB::Util.h(decoded)
 
+    # Process tagged chords [ch]...[/ch] first
     escaped = escaped.gsub(CHORD_RE) do
       chord = Regexp.last_match(1).to_s
+      chord_span(chord, variant: chord_variant)
+    end
+
+    # Process inline chords (skip any that are now inside chord spans)
+    escaped = escaped.gsub(INLINE_CHORD_RE) do |match|
+      chord = match.to_s
+      # Filter out likely false positives: single lowercase letters in words
+      next match if chord.length == 1 && chord.match?(/^[a-z]$/)
+
+      # Skip if this match is inside a chord span
+      match_position = Regexp.last_match.offset(0)[0]
+      before_match = escaped[0, match_position]
+      # Check if the most recent <span is not closed
+      last_span_start = before_match.rindex("<span")
+      last_span_end = before_match.rindex("</span>")
+      # If there's an unclosed span, skip this match
+      next match if last_span_start && (last_span_end.nil? || last_span_end < last_span_start)
+
+      # Filter out tablature string labels (chord followed by tablature indicators in original text)
+      match_position = Regexp.last_match.offset(0)[0]
+      following_text = decoded[match_position + chord.length, 10] || ""
+      # Check for various tablature formats: |, :, -, etc.
+      next match if following_text.match?(/^[#b]?\s*[\|:\-]/)
+
+      # Filter out chords in instructional text about strings/tuning
+      context_start = [ 0, match_position - 50 ].max
+      context_end = [ decoded.length, match_position + chord.length + 50 ].min
+      surrounding_context = decoded[context_start..context_end]
+      next match if surrounding_context && surrounding_context.match?(/string|tune|tuning| capo|capotraste/i)
+
       chord_span(chord, variant: chord_variant)
     end
 
@@ -198,6 +413,6 @@ module TabsHelper
     # All chords get the same black badge style for consistency
     # Using inline instead of inline-block allows better line wrapping on mobile
     # Added data-chord attribute for chord dictionary lookup
-    %(<span class="inline rounded bg-slate-900 px-1 py-0.5 text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:bg-slate-700 transition-colors" data-chord="#{chord_escaped}">#{chord_escaped}</span>)
+    "<span class=\"inline rounded bg-slate-900 px-1 py-0.5 text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:bg-slate-700 transition-colors\" data-chord=\"#{chord_escaped}\">#{chord_escaped}</span>".html_safe
   end
 end

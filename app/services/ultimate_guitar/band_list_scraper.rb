@@ -23,8 +23,8 @@ module UltimateGuitar
     MAX_REDIRECTS = 3
     BASE_URL = "https://www.ultimate-guitar.com".freeze
 
-    def self.scrape(url, **kwargs)
-      new(**kwargs).scrape(url)
+    def self.scrape(url, letter: nil, **kwargs)
+      new(**kwargs).scrape(url, letter: letter)
     end
 
     def initialize(user_agent: DEFAULT_USER_AGENT, timeout: 15, ssl_verify: true)
@@ -33,14 +33,14 @@ module UltimateGuitar
       @ssl_verify = ssl_verify
     end
 
-    def scrape(url)
+    def scrape(url, letter: nil)
       uri = URI.parse(url)
       html = fetch_html(uri)
       page_state = extract_page_state!(html)
 
       {
         bands: extract_bands(page_state),
-        pagination: extract_pagination(page_state, url)
+        pagination: extract_pagination(page_state, url, letter)
       }
     end
 
@@ -154,7 +154,7 @@ module UltimateGuitar
       end
     end
 
-    def extract_pagination(page_state, current_url)
+    def extract_pagination(page_state, current_url, letter = nil)
       data = page_state.dig("store", "page", "data") || {}
 
       current = data["current_page"].to_i
@@ -164,8 +164,8 @@ module UltimateGuitar
       total = 1 if total < 1
 
       # UG pagination uses filename format: a.htm, a2.htm, a3.htm, etc.
-      next_url = current < total ? build_page_url(current_url, current + 1) : nil
-      prev_url = current > 1 ? build_page_url(current_url, current - 1) : nil
+      next_url = current < total ? build_page_url(current_url, current + 1, letter) : nil
+      prev_url = current > 1 ? build_page_url(current_url, current - 1, letter) : nil
 
       {
         current: current,
@@ -176,21 +176,23 @@ module UltimateGuitar
     end
 
     # UG pagination: a.htm (page 1), a2.htm (page 2), a3.htm (page 3), etc.
-    def build_page_url(current_url, page_number)
+    def build_page_url(current_url, page_number, letter = nil)
       uri = URI.parse(current_url)
-      path = uri.path
 
-      # Extract the letter from the path (e.g., /bands/a.htm -> "a", /bands/a2.htm -> "a")
-      if path =~ %r{/bands/([a-z0-9-]+?)(\d*)\.htm}i
-        letter = $1
-
-        if page_number == 1
-          "#{uri.scheme}://#{uri.host}/bands/#{letter}.htm"
+      # Use the provided letter, or extract it from the current URL if not provided
+      if letter.nil?
+        path = uri.path
+        if path =~ %r{/bands/([a-z0-9-]+?)(\d*)\.htm}i
+          letter = $1
         else
-          "#{uri.scheme}://#{uri.host}/bands/#{letter}#{page_number}.htm"
+          return nil
         end
+      end
+
+      if page_number == 1
+        "#{uri.scheme}://#{uri.host}/bands/#{letter}.htm"
       else
-        nil
+        "#{uri.scheme}://#{uri.host}/bands/#{letter}#{page_number}.htm"
       end
     rescue URI::InvalidURIError
       nil

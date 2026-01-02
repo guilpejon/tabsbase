@@ -66,4 +66,7 @@ gem "pagy", "~> 43.2"
 # HTML entity decoding (for scraped content)
 gem "htmlentities"
 
+# Web scraping with browser automation
+gem "selenium-webdriver"
+
 gem "lefthook", "~> 2.0", group: :development

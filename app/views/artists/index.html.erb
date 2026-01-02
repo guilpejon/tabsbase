@@ -5,23 +5,13 @@
     <nav class="text-sm text-slate-500 mb-4">
       <%= link_to "Home", root_path, class: "hover:text-slate-900" %>
       <span class="mx-2">›</span>
-      <span class="text-slate-900">Artists: <%= @letter == "0-9" ? "#" : @letter %></span>
+      <span class="text-slate-900">Artists: <%= @letter == "0-9" ? "0-9" : @letter %></span>
     </nav>
 
     <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-      Artists starting with "<%= @letter == "0-9" ? "#" : @letter %>"
+      Artists starting with "<%= @letter == "0-9" ? "0-9" : @letter %>"
     </h1>
     <p class="text-slate-500 mt-2"><%= pluralize(@pagy.count, "artist") %> found</p>
-  </div>
-
-  <!-- Alphabet Navigation -->
-  <div class="mb-8 flex flex-wrap gap-2">
-    <%= link_to "#", artists_path(letter: "0-9"),
-        class: "w-9 h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors #{@letter == '0-9' ? 'bg-slate-900 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}" %>
-    <% ("A".."Z").each do |letter| %>
-      <%= link_to letter, artists_path(letter: letter),
-          class: "w-9 h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors #{@letter == letter ? 'bg-slate-900 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}" %>
-    <% end %>
   </div>
 
   <div class="flex items-baseline justify-between gap-4 mb-3">

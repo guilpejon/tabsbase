@@ -81,6 +81,10 @@ namespace :ultimate_guitar do
     puts "  Tunings: #{Tuning.count}"
     puts ""
 
+    tabs_with_keys = Tab.where(source: "ultimate_guitar").where.not(key: [ nil, "" ]).count
+    tabs_total = Tab.where(source: "ultimate_guitar").count
+    puts "Ultimate Guitar tabs with keys: #{tabs_with_keys}/#{tabs_total}"
+
     if defined?(SolidQueue)
       pending = SolidQueue::Job.where(finished_at: nil).count
       failed = SolidQueue::FailedExecution.count

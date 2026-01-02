@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_01_150431) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_02_175040) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -152,10 +152,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_01_150431) do
     t.datetime "created_at", null: false
     t.integer "duration"
     t.string "genre"
-    t.string "original_key"
+    t.text "lyrics"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "year"
+    t.string "youtube_music_url"
     t.index ["artist_id", "title"], name: "index_songs_on_artist_id_and_title"
     t.index ["artist_id"], name: "index_songs_on_artist_id"
     t.index ["title"], name: "index_songs_on_title"
@@ -167,21 +168,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_01_150431) do
     t.datetime "created_at", null: false
     t.string "difficulty"
     t.string "instrument", null: false
+    t.string "key"
     t.decimal "rating", precision: 3, scale: 2
     t.integer "rating_count"
     t.string "slug"
     t.bigint "song_id", null: false
+    t.string "source", default: "ultimate_guitar"
     t.string "source_url"
     t.string "tab_type"
     t.bigint "tuning_id", null: false
     t.datetime "updated_at", null: false
     t.string "version_name"
     t.integer "views_count", default: 0
-    t.string "youtube_url"
+    t.string "youtube_lesson_url"
+    t.string "youtube_music_url"
     t.index ["instrument"], name: "index_tabs_on_instrument"
     t.index ["slug"], name: "index_tabs_on_slug", unique: true
     t.index ["song_id", "instrument"], name: "index_tabs_on_song_id_and_instrument"
     t.index ["song_id"], name: "index_tabs_on_song_id"
+    t.index ["source"], name: "index_tabs_on_source"
     t.index ["tuning_id"], name: "index_tabs_on_tuning_id"
   end
 

@@ -23,7 +23,7 @@ module UltimateGuitar
     def perform(url:, letter:, min_tab_count: 100, page: 1)
       Rails.logger.info "[UG Crawl] Crawling band list: #{url} (letter=#{letter}, page=#{page})"
 
-      result = UltimateGuitar::BandListScraper.scrape(url)
+      result = UltimateGuitar::BandListScraper.scrape(url, letter: letter)
       bands = result[:bands]
       pagination = result[:pagination]
 

@@ -28,6 +28,6 @@ class Tuning < ApplicationRecord
   end
 
   def standard?
-    name.to_s.downcase.strip == "standard"
+    name.to_s.downcase.strip.start_with?("standard")
   end
 end
