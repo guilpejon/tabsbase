@@ -53,6 +53,13 @@ class Tab < ApplicationRecord
     "#{artist_name} - #{song_title}"
   end
 
+  def tab_type_version
+    parts = []
+    parts << tab_type.titleize if tab_type.present?
+    parts << version_name.titleize if version_name.present?
+    parts.join(" ")
+  end
+
   def tab_type_label
     parts = [ instrument.titleize ]
     parts << tab_type.titleize if tab_type.present?
