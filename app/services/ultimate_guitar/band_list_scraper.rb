@@ -36,6 +36,9 @@ module UltimateGuitar
     def scrape(url, letter: nil)
       uri = URI.parse(url)
       html = fetch_html(uri)
+      # Ensure HTML is properly encoded as UTF-8
+      html = html.force_encoding("UTF-8")
+      html = html.valid_encoding? ? html : html.encode("UTF-8", invalid: :replace, undef: :replace)
       page_state = extract_page_state!(html)
 
       {
@@ -140,7 +143,7 @@ module UltimateGuitar
       artists.filter_map do |artist|
         next unless artist.is_a?(Hash)
 
-        name = artist["name"].to_s.strip
+        name = decode_html_entities(artist["name"].to_s).strip
         next if name.empty?
 
         url = artist["artist_url"] || artist["url"]
@@ -196,6 +199,19 @@ module UltimateGuitar
       end
     rescue URI::InvalidURIError
       nil
+    end
+
+    def decode_html_entities(text)
+      return text unless text.is_a?(String)
+      begin
+        # Force UTF-8 encoding to avoid encoding issues
+        text = text.force_encoding("UTF-8").scrub
+        @html_coder ||= HTMLEntities.new
+        @html_coder.decode(text)
+      rescue
+        # Return original text if decoding fails
+        text
+      end
     end
   end
 end

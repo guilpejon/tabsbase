@@ -44,21 +44,65 @@
       </p>
     </div>
 
-    <div class="divide-y divide-slate-200 sm:rounded-lg sm:border sm:border-slate-200 bg-white">
-      <% if @tabs.any? %>
-        <% @tabs.each do |tab| %>
-          <%= link_to tab_path(artist_slug: tab.artist.slug, slug: tab.slug, q: @query, instrument: @instrument, tab_type: @tab_type, version: @version), class: "block px-4 py-3 sm:p-4 hover:bg-slate-50" do %>
-            <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
-                <span class="font-medium text-slate-900"><%= tab.display_name %></span>
-                <span class="block sm:hidden text-slate-500"><%= tab.tab_type_label %></span>
-                <span class="hidden sm:inline text-slate-500 sm:ml-1">(<%= tab.tab_type_label %>)</span>
-              </div>
+    <div class="space-y-6">
+      <% if @grouped_tabs&.any? %>
+        <% @grouped_tabs.each do |artist, artist_tabs| %>
+          <div class="bg-white sm:rounded-lg sm:border sm:border-slate-200 overflow-hidden">
+            <!-- Artist Header -->
+            <div class="px-4 py-3 sm:px-6 sm:py-4 bg-slate-50 border-b border-slate-200">
+              <%= link_to artist_path(artist),
+                  class: "text-lg font-semibold text-slate-900 hover:text-slate-700 hover:underline" do %>
+                <%= artist.name %>
+              <% end %>
+              <span class="text-sm text-slate-500 ml-2">
+                (<%= artist_tabs.size %> tab<%= artist_tabs.size == 1 ? '' : 's' %>)
+              </span>
             </div>
-          <% end %>
+
+            <!-- Artist's Songs -->
+            <div class="divide-y divide-slate-200">
+              <% artist_tabs.each do |tab| %>
+                <div class="px-4 py-3 sm:px-6 sm:py-4 hover:bg-slate-50">
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                      <%= link_to tab_path(artist_slug: tab.artist.slug, slug: tab.slug, q: @query, instrument: @instrument, tab_type: @tab_type, version: @version),
+                          class: "font-medium text-slate-900 hover:text-slate-700 hover:underline block" do %>
+                        <%= tab.song.title %>
+                      <% end %>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-slate-500 shrink-0">
+                      <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium">
+                        <%= tab.instrument.titleize %>
+                      </span>
+                      <% if tab.tab_type.present? && tab.tab_type != 'chords' %>
+                        <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium">
+                          <%= tab.tab_type_label %>
+                        </span>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
         <% end %>
+      <% elsif @tabs&.any? %>
+        <!-- Fallback for non-search results (shouldn't happen with search) -->
+        <div class="divide-y divide-slate-200 sm:rounded-lg sm:border sm:border-slate-200 bg-white">
+          <% @tabs.each do |tab| %>
+            <%= link_to tab_path(artist_slug: tab.artist.slug, slug: tab.slug, q: @query, instrument: @instrument, tab_type: @tab_type, version: @version), class: "block px-4 py-3 sm:p-4 hover:bg-slate-50" do %>
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-900"><%= tab.display_name %></span>
+                  <span class="block sm:hidden text-slate-500"><%= tab.tab_type_label %></span>
+                  <span class="hidden sm:inline text-slate-500 sm:ml-1">(<%= tab.tab_type_label %>)</span>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
       <% else %>
-        <div class="p-6 text-slate-600">
+        <div class="bg-white sm:rounded-lg sm:border sm:border-slate-200 p-6 text-slate-600">
           No tabs found. Try a different search.
         </div>
       <% end %>

@@ -68,6 +68,9 @@ module CifraClub
     def scrape(url)
       uri = URI.parse(url)
       html = fetch_html(uri)
+      # Ensure HTML is properly encoded as UTF-8
+      html = html.force_encoding("UTF-8")
+      html = html.valid_encoding? ? html : html.encode("UTF-8", invalid: :replace, undef: :replace)
       doc = Nokogiri::HTML(html)
 
       # Check if this is a lyrics page (ends with /letra/)
@@ -196,7 +199,7 @@ module CifraClub
               rating_count: tab_attrs[:rating_count],
               views_count: tab_attrs[:views_count],
               version_name: tab_attrs[:version_name],
-              youtube_lesson_url: tab_attrs[:youtube_lesson_url]
+              youtube_lesson_url: instrument == "guitar" ? tab_attrs[:youtube_lesson_url] : nil
             )
           end
           return existing_tab
@@ -215,7 +218,7 @@ module CifraClub
           rating_count: tab_attrs[:rating_count],
           views_count: tab_attrs[:views_count],
           version_name: tab_attrs[:version_name],
-          youtube_lesson_url: tab_attrs[:youtube_lesson_url],
+          youtube_lesson_url: instrument == "guitar" ? tab_attrs[:youtube_lesson_url] : nil,
           source_url: url,
           source: "cifra_club"
         )
@@ -381,7 +384,7 @@ module CifraClub
       body = response.body.to_s
       encoding = response["content-encoding"].to_s.downcase
 
-      case encoding
+      decoded_body = case encoding
       when "gzip"
         gz = Zlib::GzipReader.new(StringIO.new(body))
         gz.read
@@ -390,8 +393,14 @@ module CifraClub
       else
         body
       end
+
+      # Ensure proper UTF-8 encoding
+      decoded_body.force_encoding("UTF-8")
+      decoded_body.valid_encoding? ? decoded_body : decoded_body.encode("UTF-8", invalid: :replace, undef: :replace)
     rescue Zlib::Error
-      response.body.to_s
+      body = response.body.to_s
+      body.force_encoding("UTF-8")
+      body.valid_encoding? ? body : body.encode("UTF-8", invalid: :replace, undef: :replace)
     end
 
     def extract_artist_name(doc)
@@ -1167,16 +1176,58 @@ module CifraClub
 
     def find_or_create_artist!(name)
       name = decode_html_entities(name.to_s).strip
-      Artist.find_or_create_by!(name: name)
+
+      # Try accent-insensitive match first (broader search)
+      normalized_name = normalize_for_search(name)
+      existing = Artist.all.find do |artist|
+        normalize_for_search(artist.name) == normalized_name
+      end
+      return existing if existing
+
+      # Try exact case-insensitive match
+      existing = Artist.where("LOWER(name) = ?", name.downcase).first
+      return existing if existing
+
+      Artist.create!(name: name)
     rescue ActiveRecord::RecordNotUnique
-      Artist.find_by!(name: name)
+      # Race condition - try finding again
+      Artist.all.find do |artist|
+        normalize_for_search(artist.name) == normalize_for_search(name)
+      end || Artist.where("LOWER(name) = ?", name.downcase).first || Artist.find_by!(name: name)
+    end
+
+    def normalize_for_search(text)
+      return text unless text.is_a?(String)
+      begin
+        # Force UTF-8 encoding
+        text = text.force_encoding("UTF-8").scrub
+        # Use Rails' transliterate for accent removal
+        I18n.transliterate(text).downcase.strip
+      rescue
+        # Fallback to simple downcase if transliterate fails
+        text.downcase.strip
+      end
     end
 
     def find_or_create_song!(artist, title, genre: nil)
       title = decode_html_entities(title.to_s).strip
+
+      # Try accent-insensitive match first (broader search)
+      normalized_title = normalize_for_search(title)
+      existing = artist.songs.find do |song|
+        normalize_for_search(song.title) == normalized_title
+      end
+      return existing if existing
+
+      # Try exact case-insensitive match
+      existing = artist.songs.where("LOWER(title) = ?", title.downcase).first
+      return existing if existing
+
       song = Song.find_or_create_by!(artist: artist, title: title)
     rescue ActiveRecord::RecordNotUnique
-      song = Song.find_by!(artist_id: artist.id, title: title)
+      song = artist.songs.find do |s|
+               normalize_for_search(s.title) == normalize_for_search(title)
+             end || artist.songs.where("LOWER(title) = ?", title.downcase).first || Song.find_by!(artist_id: artist.id, title: title)
     ensure
       if song && genre.present? && song.genre.blank?
         song.update!(genre: genre)
@@ -1184,6 +1235,9 @@ module CifraClub
     end
 
     def find_or_create_tuning!(instrument, tuning_attrs)
+      # Drums don't have tuning
+      return nil if instrument == "drums"
+
       name = tuning_attrs.fetch(:name).to_s.strip
       strings = tuning_attrs.fetch(:strings)
       strings = Array(strings).map(&:to_s) if strings.present?
@@ -1250,8 +1304,15 @@ module CifraClub
 
     def decode_html_entities(text)
       return text unless text.is_a?(String)
-      @html_coder ||= HTMLEntities.new
-      @html_coder.decode(text)
+      begin
+        # Force UTF-8 encoding to avoid encoding issues
+        text = text.force_encoding("UTF-8").scrub
+        @html_coder ||= HTMLEntities.new
+        @html_coder.decode(text)
+      rescue
+        # Return original text if decoding fails
+        text
+      end
     end
 
     def content_similarity(content1, content2)

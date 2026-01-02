@@ -23,14 +23,14 @@
           <span class="text-base sm:text-lg font-normal text-slate-500">(<%= @tab.tab_type_label %>)</span>
         </h1>
         <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
-          <% unless @tab.tuning.standard? %>
+          <% if @tab.tuning && !@tab.tuning.standard? %>
             <span class="break-words max-w-full"><%= @tab.tuning.full_name %></span>
           <% end %>
           <% if @tab.capo.present? %>
-            <span><%= @tab.tuning.standard? ? "" : "• " %>Capo <%= @tab.capo %></span>
+            <span><%= (@tab.tuning&.standard? && @tab.capo.present?) ? "" : (@tab.tuning ? "• " : "") %>Capo <%= @tab.capo %></span>
           <% end %>
           <% if (safe_url = safe_external_url(@tab.source_url)) %>
-            <span><%= (@tab.tuning.standard? && @tab.capo.blank?) ? "" : "• " %><%= link_to "Source", safe_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
+            <span><%= (@tab.tuning&.standard? && @tab.capo.blank?) ? "" : (@tab.tuning ? "• " : "") %><%= link_to "Source", safe_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
           <% end %>
           <% if (lesson_url = safe_external_url(@tab.youtube_lesson_url)) %>
             <span>• <%= link_to "Lesson", lesson_url, target: "_blank", rel: "noopener", class: "underline decoration-slate-300 hover:decoration-slate-600" %></span>
