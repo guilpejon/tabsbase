@@ -110,6 +110,10 @@ module UltimateGuitar
         tab.source = "ultimate_guitar"
 
         tab.save!
+
+        # Discover and register chords from the tab
+        ChordDiscoveryService.discover_from_tab(tab) if tab.persisted?
+
         tab
       end
     end

@@ -1,152 +1,94 @@
 namespace :chords do
-  desc "Find all unique chords in tabs that are missing chord definitions"
+  desc "Discover all chords from existing tabs"
+  task discover: :environment do
+    puts "\n🎸 Discovering chords from all tabs..."
+    chords = ChordDiscoveryService.discover_all
+
+    unique_count = chords.map(&:name).uniq.size
+    puts "\n✅ Found #{unique_count} unique chords (#{chords.size} total instances)"
+
+    puts "\n📊 Top 20 most common:"
+    Chord.ordered_by_usage.limit(20).each_with_index do |chord, i|
+      puts "  #{(i+1).to_s.rjust(2)}. #{chord.name.ljust(15)} - #{chord.usage_count} uses"
+    end
+  end
+
+  desc "Show missing chords (in DB but not in chord_data.js)"
   task missing: :environment do
-    require "set"
+    chord_file = Rails.root.join("app/javascript/chord_data.js")
+    js_content = File.read(chord_file)
+    js_chords = js_content.scan(/"([A-G][#b]?[^"]*)"\s*:/).flatten.to_set
 
-    # Load chord data
-    chord_data_path = Rails.root.join("app/javascript/chord_data.js")
-    chord_data_content = File.read(chord_data_path)
+    missing = Chord.where.not(name: js_chords.to_a).ordered_by_usage
 
-    # Extract defined chords from each instrument section
-    guitar_chords = extract_chord_names(chord_data_content, "GUITAR_CHORDS")
-    ukulele_chords = extract_chord_names(chord_data_content, "UKULELE_CHORDS")
-    cavaquinho_chords = extract_chord_names(chord_data_content, "CAVAQUINHO_CHORDS")
-    piano_chords = extract_chord_names(chord_data_content, "PIANO_CHORDS")
+    puts "\n📊 Chords in database: #{Chord.count}"
+    puts "📊 Chords in chord_data.js: #{js_chords.size}"
+    puts "📊 Missing from chord_data.js: #{missing.count}\n"
 
-    puts "=== Defined Chords ==="
-    puts "Guitar:     #{guitar_chords.size} chords"
-    puts "Ukulele:    #{ukulele_chords.size} chords"
-    puts "Cavaquinho: #{cavaquinho_chords.size} chords"
-    puts "Piano:      #{piano_chords.size} chords"
-    puts ""
-
-    # Extract all chords from tabs
-    chord_regex = /\[ch\](.*?)\[\/ch\]/
-    all_chords = Set.new
-    chord_usage = Hash.new(0)
-
-    Tab.find_each do |tab|
-      tab.content.to_s.scan(chord_regex) do |match|
-        chord = match[0].strip
-        # Normalize - decode HTML entities
-        chord = CGI.unescapeHTML(chord)
-        all_chords.add(chord)
-        chord_usage[chord] += 1
+    if missing.any?
+      puts "\nTop 50 missing chords:"
+      missing.limit(50).each_with_index do |chord, i|
+        status = chord.has_fingering? ? "✓" : "✗"
+        puts "  #{(i+1).to_s.rjust(2)}. #{chord.name.ljust(15)} - #{chord.usage_count.to_s.rjust(4)} uses #{status}"
       end
     end
-
-    puts "=== Chords Found in Tabs ==="
-    puts "Total unique chords: #{all_chords.size}"
-    puts ""
-
-    # Find missing chords for each instrument
-    missing_guitar = all_chords - guitar_chords
-    missing_ukulele = all_chords - ukulele_chords
-    missing_cavaquinho = all_chords - cavaquinho_chords
-    missing_piano = all_chords - piano_chords
-
-    # Sort by usage (most used first)
-    sorted_missing_guitar = missing_guitar.sort_by { |c| -chord_usage[c] }
-    sorted_missing_ukulele = missing_ukulele.sort_by { |c| -chord_usage[c] }
-    sorted_missing_cavaquinho = missing_cavaquinho.sort_by { |c| -chord_usage[c] }
-    sorted_missing_piano = missing_piano.sort_by { |c| -chord_usage[c] }
-
-    # Missing from ALL instruments (highest priority)
-    missing_all = missing_guitar & missing_ukulele & missing_cavaquinho & missing_piano
-    sorted_missing_all = missing_all.sort_by { |c| -chord_usage[c] }
-
-    puts "=== Missing from ALL Instruments (#{sorted_missing_all.size} chords) ==="
-    sorted_missing_all.first(100).each do |chord|
-      puts "  #{chord.ljust(15)} (used #{chord_usage[chord]} times)"
-    end
-    puts "  ... and #{sorted_missing_all.size - 100} more" if sorted_missing_all.size > 100
-    puts ""
-
-    puts "=== Missing from Guitar Only (#{(missing_guitar - missing_all).size} chords) ==="
-    (sorted_missing_guitar - sorted_missing_all.to_a).first(50).each do |chord|
-      puts "  #{chord.ljust(15)} (used #{chord_usage[chord]} times)"
-    end
-    puts ""
-
-    puts "=== Missing from Ukulele Only (#{(missing_ukulele - missing_all).size} chords) ==="
-    (sorted_missing_ukulele - sorted_missing_all.to_a).first(50).each do |chord|
-      puts "  #{chord.ljust(15)} (used #{chord_usage[chord]} times)"
-    end
-    puts ""
-
-    puts "=== Missing from Cavaquinho Only (#{(missing_cavaquinho - missing_all).size} chords) ==="
-    (sorted_missing_cavaquinho - sorted_missing_all.to_a).first(50).each do |chord|
-      puts "  #{chord.ljust(15)} (used #{chord_usage[chord]} times)"
-    end
-    puts ""
-
-    puts "=== Missing from Piano Only (#{(missing_piano - missing_all).size} chords) ==="
-    (sorted_missing_piano - sorted_missing_all.to_a).first(50).each do |chord|
-      puts "  #{chord.ljust(15)} (used #{chord_usage[chord]} times)"
-    end
-    puts ""
-
-    # Summary
-    puts "=== Summary ==="
-    puts "Missing from Guitar:     #{missing_guitar.size}"
-    puts "Missing from Ukulele:    #{missing_ukulele.size}"
-    puts "Missing from Cavaquinho: #{missing_cavaquinho.size}"
-    puts "Missing from Piano:      #{missing_piano.size}"
-    puts "Missing from ALL:        #{missing_all.size}"
   end
 
-  desc "List all unique chords used in tabs"
-  task list: :environment do
-    chord_regex = /\[ch\](.*?)\[\/ch\]/
-    chord_usage = Hash.new(0)
+  desc "Show chord statistics"
+  task stats: :environment do
+    total = Chord.count
+    with_fingerings = Chord.with_fingerings.count
+    without_fingerings = Chord.without_fingerings.count
 
-    Tab.find_each do |tab|
-      tab.content.to_s.scan(chord_regex) do |match|
-        chord = CGI.unescapeHTML(match[0].strip)
-        chord_usage[chord] += 1
+    puts "\n📊 Chord Statistics"
+    puts "=" * 50
+    puts "Total chords: #{total}"
+    puts "  With fingerings: #{with_fingerings}"
+    puts "  Without fingerings: #{without_fingerings}"
+
+    if total > 0
+      most_common = Chord.ordered_by_usage.first
+      puts "\nMost common: #{most_common.name} (#{most_common.usage_count} uses)"
+    end
+  end
+
+  desc "Normalize all chord names in database"
+  task normalize: :environment do
+    puts "\n🔄 Normalizing chord names..."
+
+    service = ChordDiscoveryService.new
+    normalized_count = 0
+    merged_count = 0
+
+    Chord.find_each do |chord|
+      original_name = chord.name
+      normalized_name = service.send(:normalize_chord_name, original_name)
+
+      next if normalized_name.blank?
+      next if normalized_name == original_name
+
+      # Find or create the normalized chord
+      target_chord = Chord.find_or_initialize_by(name: normalized_name)
+
+      if target_chord.new_record?
+        # Rename this chord
+        chord.update_column(:name, normalized_name)
+        normalized_count += 1
+        puts "  ✓ Renamed: #{original_name} → #{normalized_name}"
+      else
+        # Merge into existing normalized chord
+        target_chord.increment!(:usage_count, chord.usage_count)
+        chord.destroy
+        merged_count += 1
+        puts "  ✓ Merged: #{original_name} → #{normalized_name} (+#{chord.usage_count} uses)"
       end
+    rescue => e
+      puts "  ✗ Error normalizing #{original_name}: #{e.message}"
     end
 
-    puts "=== All Chords (sorted by usage) ==="
-    chord_usage.sort_by { |_, count| -count }.each do |chord, count|
-      puts "#{chord.ljust(20)} #{count}"
-    end
-    puts ""
-    puts "Total unique chords: #{chord_usage.size}"
+    puts "\n✅ Normalization complete!"
+    puts "   Renamed: #{normalized_count} chords"
+    puts "   Merged: #{merged_count} chords"
+    puts "   Total chords now: #{Chord.count}"
   end
-
-  private
-
-  def extract_chord_names(content, section_name)
-    # Find the section and extract chord names
-    # Pattern: "ChordName": { ... }
-    section_match = content.match(/export const #{section_name} = \{(.*?)\n\}/m)
-    return Set.new unless section_match
-
-    section_content = section_match[1]
-    chords = Set.new
-
-    # Match chord names like "C", "Dm", "F#m7", etc.
-    section_content.scan(/"([^"]+)":\s*\{/) do |match|
-      chords.add(match[0])
-    end
-
-    chords
-  end
-end
-
-def extract_chord_names(content, section_name)
-  # Find the section and extract chord names
-  section_match = content.match(/export const #{section_name} = \{(.*?)\n\}/m)
-  return Set.new unless section_match
-
-  section_content = section_match[1]
-  chords = Set.new
-
-  # Match chord names like "C", "Dm", "F#m7", etc.
-  section_content.scan(/"([^"]+)":\s*\{/) do |match|
-    chords.add(match[0])
-  end
-
-  chords
 end

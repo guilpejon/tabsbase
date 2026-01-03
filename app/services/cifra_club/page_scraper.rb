@@ -228,6 +228,10 @@ module CifraClub
         )
 
         tab.save!
+
+        # Discover and register chords from the tab
+        ChordDiscoveryService.discover_from_tab(tab) if tab.persisted?
+
         tab
       end
     end
@@ -545,8 +549,8 @@ module CifraClub
       youtube_urls = extract_youtube_urls(url)
       youtube_lesson_url = youtube_urls[:lesson]
 
-      # Determine instrument based on URL
-      instrument = determine_instrument(url)
+      # Determine instrument based on content first, fallback to URL
+      instrument = analyze_content_for_instrument(content, url)
 
       # Extract metadata for content cleaning
       artist_name = extract_artist_name(doc)
@@ -758,6 +762,55 @@ module CifraClub
       return "drums" if url.include?("bateria") || url.include?("drum")
       return "bass" if url.include?("baixo") || url.include?("bass")
       "guitar"  # Default for Cifra Club
+    end
+
+    # Analyze tab content to determine actual instrument (content-first detection)
+    # Falls back to URL-based detection if content is ambiguous
+    def analyze_content_for_instrument(content, url)
+      return "guitar" if has_guitar_notation?(content)
+      return "bass" if has_bass_notation?(content)
+      return "drums" if has_drum_notation?(content)
+
+      # Fallback to URL-based detection with warning
+      instrument = determine_instrument(url)
+      Rails.logger.warn "[CifraClub] Using URL-based instrument detection for #{url}: #{instrument}"
+      instrument
+    end
+
+    # Check if content contains guitar tablature notation
+    def has_guitar_notation?(content)
+      return false if content.blank?
+
+      # Check for 6-string guitar patterns (E|A|D|G|B|e)
+      has_guitar_strings = content.match?(/^[eEBGDAE]\s*[\|\:]/)
+      has_fret_numbers = content.match?(/^[eEBGDAE]\s*[\|\:][^\n]*[\d]/)
+      has_chords = content.match?(/[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|7M|7|9|11|13)/)
+
+      # Strong signal: guitar strings + fret numbers OR chords
+      (has_guitar_strings && has_fret_numbers) ||
+      (has_guitar_strings && has_chords) ||
+      (has_chords && content.lines.count > 10)
+    end
+
+    # Check if content contains bass tablature notation
+    def has_bass_notation?(content)
+      return false if content.blank?
+
+      # Check for 4-string bass patterns WITHOUT high guitar strings
+      has_bass_strings = content.match?(/^[GDAE]\s*[\|\:]/)
+      no_high_strings = !content.match?(/^[eEB]\s*[\|\:]/)
+      has_fret_numbers = content.match?(/^[GDAE]\s*[\|\:][^\n]*[\d]/)
+
+      has_bass_strings && no_high_strings && has_fret_numbers
+    end
+
+    # Check if content contains drum notation
+    def has_drum_notation?(content)
+      return false if content.blank?
+
+      # Check for drum-specific notation patterns (CC=crash, HH=hihat, BD=bass drum, SN=snare, etc.)
+      content.match?(/^\s*(?:CC|HH|BD|SN|FT|MT|HT|LT|RC|CR|Cr|Ri|Ch|Cx|T[123]|Su|Bu)\s*[\|\-xo]/m) ||
+      content.match?(/^\s*[CHSB]\s+[\|\-xo]/m)
     end
 
     def default_tuning_name(instrument)

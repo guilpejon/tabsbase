@@ -43,10 +43,8 @@ class HomeController < ApplicationController
       # Pagy v43 API: pagy(:offset, collection)
       @pagy, @tabs = pagy(:offset, tabs)
 
-      # Group tabs by artist for display
-      if @query.present?
-        @grouped_tabs = @tabs.group_by(&:artist)
-      end
+      # Group tabs by artist for display (always group when there's an active search)
+      @grouped_tabs = @tabs.group_by(&:artist)
     else
       # No active search - show top 20 artists by combined views and tab count
       @top_artists = Artist
