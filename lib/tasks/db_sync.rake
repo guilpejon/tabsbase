@@ -11,7 +11,6 @@ namespace :db do
 
     desc "Export local database data to a SQL file (data only, no schema)"
     task export: :environment do
-
       puts "Exporting data from local database..."
       puts "Tables: #{SYNC_TABLES.join(", ")}"
 
@@ -76,7 +75,6 @@ namespace :db do
 
     desc "Push local scraper data to production (export + scp + import)"
     task push: :environment do
-
       # Step 1: Export
       puts "=" * 50
       puts "Step 1: Exporting local database..."
