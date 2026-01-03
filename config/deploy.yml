@@ -52,8 +52,8 @@ env:
 
     # Raspberry Pi has limited resources, keep concurrency low
     WEB_CONCURRENCY: 0
-    # Solid Queue needs at least 5 threads for its default configuration
-    RAILS_MAX_THREADS: 5
+    # Solid Queue needs at least 7 threads + headroom for web requests
+    RAILS_MAX_THREADS: 10
 
     # Database host - points to the Docker container name on the kamal network
     DB_HOST: tabsbase-db

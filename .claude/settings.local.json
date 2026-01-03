@@ -11,7 +11,9 @@
       "Bash(bundle update:*)",
       "Bash(timeout:*)",
       "Bash(bin/brakeman:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(pg_isready:*)",
+      "Bash(brew services:*)"
     ]
   }
 }
