@@ -765,15 +765,43 @@ module CifraClub
     end
 
     # Analyze tab content to determine actual instrument (content-first detection)
-    # Falls back to URL-based detection if content is ambiguous
+    # Prioritizes content analysis over URL-based detection to avoid misclassification
     def analyze_content_for_instrument(content, url)
+      # First priority: explicit instrument detection from content
       return "guitar" if has_guitar_notation?(content)
       return "bass" if has_bass_notation?(content)
       return "drums" if has_drum_notation?(content)
 
-      # Fallback to URL-based detection with warning
+      # Second priority: check for mixed content (guitar + bass strings)
+      # If we have both guitar and bass strings, it's likely guitar with bass notation
+      has_guitar_strings = content.match?(/^[eEBGDAE]\s*[\|\:]/)
+      has_bass_strings = content.match?(/^[GDAE]\s*[\|\:]/)
+
+      if has_guitar_strings && has_bass_strings
+        Rails.logger.info "[CifraClub] Mixed guitar/bass notation detected, classifying as guitar: #{url}"
+        return "guitar"
+      end
+
+      # Third priority: check for chord-only content (likely guitar)
+      has_chords_only = content.match?(/[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|7M|7|9|11|13)/) &&
+                       !content.match?(/^[eEBGDAE]\s*[\|\:]/) &&
+                       !content.match?(/^[GDAE]\s*[\|\:]/)
+
+      if has_chords_only && content.lines.count > 5
+        Rails.logger.info "[CifraClub] Chord-only content detected, classifying as guitar: #{url}"
+        return "guitar"
+      end
+
+      # Last resort: URL-based detection with warning
       instrument = determine_instrument(url)
-      Rails.logger.warn "[CifraClub] Using URL-based instrument detection for #{url}: #{instrument}"
+
+      # Special warning for bass/guitar classification based on URL
+      if %w[bass guitar].include?(instrument)
+        Rails.logger.warn "[CifraClub] ⚠️  URL-based instrument detection may be unreliable for #{instrument} tabs. Consider manual review: #{url}"
+      else
+        Rails.logger.warn "[CifraClub] Using URL-based instrument detection for #{url}: #{instrument}"
+      end
+
       instrument
     end
 
@@ -1108,28 +1136,52 @@ module CifraClub
     end
 
     def extract_version_name(doc, url = nil)
-      # Check URL for version indicators first
+      # Check URL for version indicators first - only exact matches to avoid parsing URL paths
       if url
         return "Simplified" if url.include?("simplificada")
         return "Original" if url.include?("original")
       end
 
-      # Check for version indicators in title or content
+      # Check for version indicators in title only - be very conservative to avoid false matches
       title = doc.at_css("title")&.text
       if title
-        # Look for version keywords (not instrument types)
-        keywords = %w[acoustic solo intro outro live unplugged fingerstyle electric electrico original]
-        keywords.each do |keyword|
-          return keyword.capitalize if title.match?(/#{keyword}/i)
-        end
+        title_lower = title.downcase
 
-        # Check for Portuguese version keywords (not instruments)
-        portuguese_keywords = %w[simplificada acustico ao vivo desconectado fingerstyle eletrico original]
-        portuguese_keywords.each do |keyword|
-          return keyword.capitalize if title.match?(/#{keyword}/i)
+        # Check for complete multi-word phrases first
+        return "Ao Vivo" if title_lower.include?("ao vivo")
+        return "Unplugged" if title_lower.include?("unplugged")
+        return "Acoustic" if title_lower.include?("acoustic") && !title_lower.include?("electric")
+
+        # Look for standalone version keywords (not part of other words)
+        version_indicators = {
+          "acoustic" => "Acoustic",
+          "solo" => "Solo",
+          "intro" => "Intro",
+          "outro" => "Outro",
+          "live" => "Live",
+          "fingerstyle" => "Fingerstyle",
+          "electric" => "Electric",
+          "original" => "Original",
+          "simplificada" => "Simplified",
+          "acustico" => "Acústico",
+          "desconectado" => "Desconectado",
+          "eletrico" => "Elétrico"
+        }
+
+        # Only match if the keyword appears as a separate word/component in the title
+        version_indicators.each do |keyword, display_name|
+          # Use word boundaries and check that this isn't part of a URL path
+          if title_lower.match?(/\b#{Regexp.escape(keyword)}\b/i)
+            # Additional check: make sure this isn't extracting from a URL-like string
+            next if title.include?("/") && title.split("/").any? { |part| part.downcase.include?(keyword) }
+            Rails.logger.debug "[CifraClub] Found version '#{display_name}' in title: #{title}"
+            return display_name
+          end
         end
       end
 
+      # Never try to parse URL paths or other content for version names
+      Rails.logger.debug "[CifraClub] No version found for URL: #{url}"
       nil
     end
 

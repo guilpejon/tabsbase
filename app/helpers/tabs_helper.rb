@@ -4,7 +4,7 @@ module TabsHelper
   # Regex for inline chords (not wrapped in [ch] tags)
   # Matches chord patterns like: C, C7, Cm, Cmaj7, C#dim, Db9, etc.
   # Requires uppercase root note to avoid matching English words like "am"
-  INLINE_CHORD_RE = /(?<=\W|^)[A-G][#b]?(?:maj|min|m|dim|aug|sus\d*|add\d*|7M|7|9|11|13|6|5|4|2|1|0)*(?:\([^)]+\))?(?:\/[A-G][#b]?)?(?=\W|$)/
+  INLINE_CHORD_RE = /(?<=\W|^)[A-G][#b]?(?:maj|min|m|dim|aug|sus\d*|add\d*|7M|7|9|11|13|6|5|4|2|1|0|º|°)*(?:\([^)]+\))?(?:\/[A-G][#b]?)?(?=\W|$)/
 
 
   # Check if content contains any chords (tagged or inline)

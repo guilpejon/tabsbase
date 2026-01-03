@@ -114,6 +114,8 @@ class ChordDiscoveryService
     # Normalize Brazilian notation
     name = name.gsub(/7M/, "maj7") # 7M -> maj7
     name = name.gsub(/Δ/, "maj") # Delta symbol -> maj
+    name = name.gsub(/º/, "dim") # Degree symbol -> dim
+    name = name.gsub(/°/, "dim") # Degree symbol (alternative) -> dim
 
     # Ensure first character is uppercase
     name = name[0].upcase + name[1..-1] if name.present?
