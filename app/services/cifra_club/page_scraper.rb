@@ -412,19 +412,7 @@ module CifraClub
     end
 
     def extract_artist_name(doc)
-      # First try: extract from canonical URL path
-      canonical_url = doc.at_css("link[rel='canonical']")&.attr("href")
-      if canonical_url
-        uri = URI.parse(canonical_url)
-        path_parts = uri.path&.split("/")&.reject(&:empty?)
-        if path_parts&.length&.>= 2
-          artist_slug = path_parts[0]
-          return artist_slug.titleize if artist_slug.present?
-        end
-      end
-
-      # Second try: extract from page URL (passed as parameter, but we don't have it here)
-      # Third try: parse from title
+      # First try: parse from title tag (most reliable for accents)
       title = doc.at_css("title")&.text
       if title && title.include?(" - ")
         # Format: "Song Title - Artist Name - Cifra Club"
@@ -434,7 +422,7 @@ module CifraClub
         end
       end
 
-      # Fallback: try various selectors
+      # Second try: various HTML selectors
       selectors = [
         "h1[itemprop='name'] a",
         ".artista-nome",
@@ -450,22 +438,22 @@ module CifraClub
         return text if text.present? && text != "Cifra Club"
       end
 
-      nil
-    end
-
-    def extract_song_title(doc)
-      # First try: extract from canonical URL path
+      # Last resort: extract from canonical URL path (may not have accents)
       canonical_url = doc.at_css("link[rel='canonical']")&.attr("href")
       if canonical_url
         uri = URI.parse(canonical_url)
         path_parts = uri.path&.split("/")&.reject(&:empty?)
         if path_parts&.length&.>= 2
-          song_slug = path_parts[1]
-          return song_slug.titleize.gsub("-", " ") if song_slug.present?
+          artist_slug = path_parts[0]
+          return artist_slug.titleize if artist_slug.present?
         end
       end
 
-      # Second try: parse from title
+      nil
+    end
+
+    def extract_song_title(doc)
+      # First try: parse from title tag (most reliable for accents)
       title = doc.at_css("title")&.text
       if title && title.include?(" - ")
         # Format: "Song Title - Artist Name - Cifra Club"
@@ -476,7 +464,7 @@ module CifraClub
         end
       end
 
-      # Fallback: try various selectors
+      # Second try: various HTML selectors
       selectors = [
         ".cifra-nome",
         ".song-title",
@@ -489,6 +477,17 @@ module CifraClub
 
         text = element.text&.strip
         return text if text.present? && text != "Cifra Club"
+      end
+
+      # Last resort: extract from canonical URL path (may not have accents)
+      canonical_url = doc.at_css("link[rel='canonical']")&.attr("href")
+      if canonical_url
+        uri = URI.parse(canonical_url)
+        path_parts = uri.path&.split("/")&.reject(&:empty?)
+        if path_parts&.length&.>= 2
+          song_slug = path_parts[1]
+          return song_slug.titleize.gsub("-", " ") if song_slug.present?
+        end
       end
 
       nil
