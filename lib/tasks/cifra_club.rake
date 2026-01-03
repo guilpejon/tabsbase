@@ -1,9 +1,17 @@
 namespace :cifra_club do
+  # Constants for repeated values
+  CIFRA_CLUB_BASE_URL = "https://www.cifraclub.com.br"
+  USER_AGENT = "Mozilla/5.0 (compatible; CifraClub Scraper)"
+  INVALID_PATH_SEGMENTS = ["/tab", "/artist", "/musico", "/album", "/playlist"]
+  EXCLUDED_PAGE_SUFFIXES = ["/musicas.html", "/albuns.html", "/discografia.html", "/videoaulas.html"]
+  MAX_POPULAR_SONGS = 15
+  DELAY_BETWEEN_SONGS = 1
+  DELAY_BETWEEN_ARTISTS = 2
   desc "Scrape all available versions of a Cifra Club song"
   task :scrape_tab, [ :url ] => :environment do |t, args|
     unless args[:url]
       puts "Usage: rake cifra_club:scrape[url]"
-      puts "Example: rake cifra_club:scrape['https://www.cifraclub.com.br/linkin-park/in-the-end/']"
+      puts "Example: rake cifra_club:scrape['#{CIFRA_CLUB_BASE_URL}/linkin-park/in-the-end/']"
       puts "This will scrape: principal, simplified, drum, and bass versions (if available)"
       exit 1
     end
@@ -254,7 +262,7 @@ namespace :cifra_club do
 
       begin
         # Fetch and parse the artist page
-        html = URI.open(artist_url, "User-Agent" => "Mozilla/5.0 (compatible; CifraClub Scraper)").read
+        html = URI.open(artist_url, "User-Agent" => USER_AGENT).read
         doc = Nokogiri::HTML(html)
 
         # Extract song URLs from the popular songs section
@@ -266,10 +274,9 @@ namespace :cifra_club do
           next unless href
 
           # Skip external links, anchor links, and non-song links
-          next if href.start_with?("http") && !href.include?("cifraclub.com.br")
+          next if href.start_with?("http") && !href.include?(CIFRA_CLUB_BASE_URL)
           next if href.start_with?("#")
-          next if href.include?("/tab") || href.include?("/artist") || href.include?("/musico")
-          next if href.include?("/album") || href.include?("/playlist")
+          next if INVALID_PATH_SEGMENTS.any? { |segment| href.include?(segment) }
 
           # Clean up the href
           clean_href = href.split(/[?#]/).first
@@ -278,10 +285,10 @@ namespace :cifra_club do
           path_parts = clean_href.split("/").reject(&:empty?)
           if path_parts.length == 2 && path_parts[0] != "tab" && path_parts[0] != "artist"
             # Make sure it's not the current artist page
-            artist_path = artist_url.sub("https://www.cifraclub.com.br", "").chomp("/")
+            artist_path = artist_url.sub(CIFRA_CLUB_BASE_URL, "").chomp("/")
             next if clean_href == artist_path
 
-            full_url = clean_href.start_with?("http") ? clean_href : "https://www.cifraclub.com.br#{clean_href}"
+            full_url = clean_href.start_with?("http") ? clean_href : "#{CIFRA_CLUB_BASE_URL}#{clean_href}"
             song_links << full_url unless song_links.include?(full_url)
           end
         end
@@ -289,15 +296,12 @@ namespace :cifra_club do
         # Filter to only include URLs for this artist
         song_links.select! do |url|
           url.include?("/#{artist_name}/") &&
-          !url.include?("/musicas.html") &&
-          !url.include?("/albuns.html") &&
-          !url.include?("/discografia.html") &&
-          !url.include?("/videoaulas.html") &&
+          EXCLUDED_PAGE_SUFFIXES.none? { |suffix| url.include?(suffix) } &&
           url.end_with?("/")
         end
 
-        # Remove duplicates and limit to 15 most popular songs
-        song_links = song_links.uniq.first(15)
+        # Remove duplicates and limit to most popular songs
+        song_links = song_links.uniq.first(MAX_POPULAR_SONGS)
 
         puts "  Found #{song_links.length} popular songs"
 
@@ -324,14 +328,14 @@ namespace :cifra_club do
           end
 
           # Small delay to be respectful to the server
-          sleep(1) if song_index < song_links.length - 1
+          sleep(DELAY_BETWEEN_SONGS) if song_index < song_links.length - 1
         end
 
         total_artists_processed += 1
         puts "  ✓ Completed artist: #{artist_name} (#{artist_tabs} tabs)"
 
         # Longer delay between artists
-        sleep(2) if artist_index < artist_urls.length - 1
+        sleep(DELAY_BETWEEN_ARTISTS) if artist_index < artist_urls.length - 1
 
       rescue => e
         puts "  ✗ Failed to process artist: #{e.message}"
@@ -360,7 +364,7 @@ namespace :cifra_club do
   task :scrape_artist, [ :url ] => :environment do |t, args|
     unless args[:url]
       puts "Usage: rake cifra_club:scrape_artist_popular[url]"
-      puts "Example: rake cifra_club:scrape_artist_popular['https://www.cifraclub.com.br/linkin-park/']"
+      puts "Example: rake cifra_club:scrape_artist_popular['#{CIFRA_CLUB_BASE_URL}/linkin-park/']"
       puts "This will scrape the 15 most popular songs from the artist page"
       exit 1
     end
@@ -373,7 +377,7 @@ namespace :cifra_club do
 
     begin
       # Fetch and parse the artist page
-      html = URI.open(artist_url, "User-Agent" => "Mozilla/5.0 (compatible; CifraClub Scraper)").read
+      html = URI.open(artist_url, "User-Agent" => USER_AGENT).read
       doc = Nokogiri::HTML(html)
 
       # Extract song URLs from the popular songs section
@@ -386,10 +390,9 @@ namespace :cifra_club do
         next unless href
 
         # Skip external links, anchor links, and non-song links
-        next if href.start_with?("http") && !href.include?("cifraclub.com.br")
+        next if href.start_with?("http") && !href.include?(CIFRA_CLUB_BASE_URL)
         next if href.start_with?("#")
-        next if href.include?("/tab") || href.include?("/artist") || href.include?("/musico")
-        next if href.include?("/album") || href.include?("/playlist")
+        next if INVALID_PATH_SEGMENTS.any? { |segment| href.include?(segment) }
 
         # Clean up the href
         clean_href = href.split(/[?#]/).first
@@ -398,10 +401,10 @@ namespace :cifra_club do
         path_parts = clean_href.split("/").reject(&:empty?)
         if path_parts.length == 2 && path_parts[0] != "tab" && path_parts[0] != "artist"
           # Make sure it's not the current artist page
-          artist_path = artist_url.sub("https://www.cifraclub.com.br", "").chomp("/")
+          artist_path = artist_url.sub(CIFRA_CLUB_BASE_URL, "").chomp("/")
           next if clean_href == artist_path
 
-          full_url = clean_href.start_with?("http") ? clean_href : "https://www.cifraclub.com.br#{clean_href}"
+          full_url = clean_href.start_with?("http") ? clean_href : "#{CIFRA_CLUB_BASE_URL}#{clean_href}"
           song_links << full_url unless song_links.include?(full_url)
         end
       end
@@ -411,15 +414,12 @@ namespace :cifra_club do
       artist_name = artist_url.split("/")[-2] # Extract artist name from URL
       song_links.select! do |url|
         url.include?("/#{artist_name}/") &&
-        !url.include?("/musicas.html") &&
-        !url.include?("/albuns.html") &&
-        !url.include?("/discografia.html") &&
-        !url.include?("/videoaulas.html") &&
+        EXCLUDED_PAGE_SUFFIXES.none? { |suffix| url.include?(suffix) } &&
         url.end_with?("/") # Song URLs end with /
       end
 
-      # Remove duplicates and limit to 15 most popular songs
-      song_links = song_links.uniq.first(15)
+      # Remove duplicates and limit to most popular songs
+      song_links = song_links.uniq.first(MAX_POPULAR_SONGS)
 
       puts "Found #{song_links.length} popular song URLs:"
       song_links.each { |url| puts "  #{url}" }
@@ -449,7 +449,7 @@ namespace :cifra_club do
         end
 
         # Small delay to be respectful to the server
-        sleep(1) if index < song_links.length - 1
+        sleep(DELAY_BETWEEN_SONGS) if index < song_links.length - 1
       end
 
       puts "\n✓ Successfully scraped #{total_tabs} tabs from #{song_links.length} popular songs"
@@ -458,6 +458,57 @@ namespace :cifra_club do
       puts "✗ Failed to scrape artist page: #{e.message}"
       puts e.backtrace.join("\n") if ENV["DEBUG"]
       exit 1
+    end
+  end
+
+  desc "Fix HTML entities in existing Cifra Club tab content"
+  task fix_html_entities: :environment do
+    puts "Fixing HTML entities in Cifra Club tab content..."
+
+    # Find tabs with HTML entities in content
+    tabs_with_entities = Tab.where(source: "cifra_club")
+                           .where("content LIKE ?", "%&%")
+
+    puts "Found #{tabs_with_entities.count} tabs with HTML entities"
+
+    fixed_count = 0
+    tabs_with_entities.each do |tab|
+      begin
+        # Decode HTML entities in content
+        original_content = tab.content
+        decoded_content = decode_html_entities(original_content)
+
+        if decoded_content != original_content
+          tab.update!(content: decoded_content)
+          fixed_count += 1
+          puts "✓ Fixed tab: #{tab.song_title} (#{tab.instrument})"
+        end
+      rescue => e
+        puts "✗ Failed to fix tab #{tab.id}: #{e.message}"
+      end
+    end
+
+    puts "\n✓ Fixed HTML entities in #{fixed_count} tabs"
+
+    # Verify the fix
+    remaining = Tab.where(source: "cifra_club").where("content LIKE ?", "%&%").count
+    if remaining == 0
+      puts "✓ All Cifra Club tabs now have properly decoded content"
+    else
+      puts "✗ #{remaining} tabs still contain HTML entities"
+    end
+  end
+
+  def decode_html_entities(text)
+    return text unless text.is_a?(String)
+    begin
+      # Force UTF-8 encoding to avoid encoding issues
+      text = text.force_encoding("UTF-8").scrub
+      @html_coder ||= HTMLEntities.new
+      @html_coder.decode(text)
+    rescue
+      # Return original text if decoding fails
+      text
     end
   end
 end

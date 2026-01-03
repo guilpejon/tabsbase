@@ -27,11 +27,7 @@ export default class extends Controller {
       return
     }
     
-    // Load saved preference
-    const saved = localStorage.getItem("singerModeEnabled")
-    if (saved === "true") {
-      this.enabledValue = true
-    }
+    // Don't load saved preference - lyrics mode should not persist across sessions
     
     // Apply mode after a short delay to ensure DOM is ready
     // and other controllers have finished their setup
@@ -47,7 +43,6 @@ export default class extends Controller {
     if (!this.chordTabValue && !this.hasMeaningfulLyrics()) return
     
     this.enabledValue = !this.enabledValue
-    localStorage.setItem("singerModeEnabled", this.enabledValue)
     this.applyMode()
     this.updateButtonState()
   }

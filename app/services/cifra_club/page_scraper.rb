@@ -607,19 +607,19 @@ module CifraClub
         element = doc.at_css(selector)
         next unless element
 
-        # Get text content and preserve line breaks
-        content = element.text
+        # Get text content and decode HTML entities
+        content = decode_html_entities(element.text)
         return content if content.present?
       end
 
       # Fallback: look for preformatted content or divs with chord/tab classes
       tab_div = doc.at_css("pre, .tab, .chords")
-      return tab_div&.text if tab_div
+      return decode_html_entities(tab_div.text) if tab_div
 
       # Last resort: extract all text that looks like chords/tabs
       # This is less reliable but better than nothing
       body = doc.at_css("body")
-      return extract_tab_like_content(body.text) if body
+      return extract_tab_like_content(decode_html_entities(body.text)) if body
 
       nil
     end
