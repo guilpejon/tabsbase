@@ -98,6 +98,9 @@ module TabsHelper
 
     text = fix_malformed_chord_charts(content.to_s)
 
+    # Add spacing before section markers for better readability
+    text = add_section_spacing(text)
+
     # Check if this content contains [tab] blocks (Ultimate Guitar format)
     # If so, parse them individually - this takes precedence over other logic
     if text.match?(TAB_BLOCK_RE)
@@ -160,8 +163,45 @@ module TabsHelper
 
   private
 
+  def add_section_spacing(text)
+    lines = text.lines
+    result = []
+
+    lines.each_with_index do |line, index|
+      # Check if this line starts with a section marker (case-insensitive)
+      is_section = line.strip.match?(/^\[(?:Intro|Verse|Chorus|Bridge|Break|Outro|Pre-Chorus|Post-Chorus|Interlude|Solo|Instrumental|Hook|Refrain|Primeira Parte|Segunda Parte|Terceira Parte|Quarta Parte|Pré-Refrão|Refrão|Ponte|Final)/i)
+
+      # Add blank line before section marker (unless it's the first line or previous line is already blank)
+      if is_section && index > 0 && !lines[index - 1].strip.empty?
+        result << "\n"
+      end
+
+      result << line
+    end
+
+    result.join
+  end
+
   def render_ug_tab_block(text)
-    inner_html = ug_inline_format(text.to_s, chord_variant: :mono)
+    # Add spacing before section markers for better readability
+    lines = text.to_s.lines
+    result = []
+
+    lines.each_with_index do |line, index|
+      # Check if this line starts with a section marker
+      is_section = line.strip.match?(/^\[(?:Intro|Verse|Chorus|Bridge|Break|Outro|Pre-Chorus|Post-Chorus|Interlude|Solo|Instrumental|Hook|Refrain|Primeira Parte|Segunda Parte|Terceira Parte|Pré-Refrão|Refrão|Ponte|Final)/i)
+
+      # Add blank line before section marker (unless it's the first line or previous line is already blank)
+      if is_section && index > 0 && !lines[index - 1].strip.empty?
+        result << "\n"
+      end
+
+      result << line
+    end
+
+    processed_text = result.join
+
+    inner_html = ug_inline_format(processed_text, chord_variant: :mono)
 
     # Don't use whitespace-pre - let JavaScript controller handle wrapping at natural break points
     # overflow-x-auto as fallback for very wide content
@@ -305,15 +345,16 @@ module TabsHelper
   end
 
   def render_ug_text_block(text)
-    # Normalize spacing - remove all blank lines within blocks
-    normalized = text.to_s.gsub(/\n{2,}/, "\n").strip
+    # Preserve blank lines (don't collapse them)
+    # But limit excessive blank lines (more than 2 consecutive) to just 2
+    normalized = text.to_s.gsub(/\n{3,}/, "\n\n").strip
     html = ug_inline_format(normalized, chord_variant: :inline)
 
     # Add top margin if this block starts with a section marker
     starts_with_section = normalized.match?(SECTION_MARKERS)
 
-    # All text blocks use pre-wrap for wrapping - CSS will handle mobile
-    css_class = "text-sm leading-6 text-slate-900 font-mono"
+    # All text blocks use pre-wrap for wrapping and preserve whitespace/newlines
+    css_class = "text-sm leading-6 text-slate-900 font-mono whitespace-pre-wrap"
     css_class += " mt-6" if starts_with_section
 
     content_tag(

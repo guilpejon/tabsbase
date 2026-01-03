@@ -1436,14 +1436,16 @@ module CifraClub
         next if content.length < 50
 
         # Check if it looks like lyrics (has line breaks and reasonable structure)
-        lines = content.split("\n").map(&:strip).reject(&:empty?)
-        next unless lines.length >= 3 # Lyrics should have multiple lines
+        # PRESERVE empty lines for paragraph breaks
+        lines = content.split("\n").map(&:strip)
+        non_empty_lines = lines.reject(&:empty?)
+        next unless non_empty_lines.length >= 3 # Lyrics should have multiple lines
 
         # Check if most lines start with capital letters or are short (verse markers)
-        lyric_like_lines = lines.count do |line|
+        lyric_like_lines = non_empty_lines.count do |line|
           line.start_with?(/[A-Z]/) || line.length <= 3 || (line.start_with?("[") && line.end_with?("]"))
         end
-        next unless lyric_like_lines >= lines.length * 0.6 # At least 60% look like lyrics
+        next unless lyric_like_lines >= non_empty_lines.length * 0.6 # At least 60% look like lyrics
 
         # Filter out translation content - stop when we encounter Portuguese text
         # that indicates the start of a translation
@@ -1458,10 +1460,12 @@ module CifraClub
           filtered_lines << line
         end
 
-        # Make sure we have enough content after filtering
-        next unless filtered_lines.length >= 3
+        # Make sure we have enough content after filtering (counting non-empty lines)
+        next unless filtered_lines.reject(&:empty?).length >= 3
 
-        return filtered_lines.join("\n")
+        # Clean up excessive empty lines (more than 2 consecutive)
+        result = filtered_lines.join("\n").gsub(/\n{3,}/, "\n\n")
+        return result
       end
     end
 

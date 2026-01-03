@@ -212,12 +212,21 @@ export const GUITAR_CHORDS = {
   "Bm6": { frets: [-1, 2, 0, 1, 0, 2], fingers: [0, 2, 0, 1, 0, 3] },
   
   // 9th chords
-  "E9": { frets: [0, 2, 0, 1, 0, 2], fingers: [0, 2, 0, 1, 0, 3] },
-  "A9": { frets: [-1, 0, 2, 1, 2, 0], fingers: [0, 0, 2, 1, 3, 0] },
-  "D9": { frets: [-1, -1, 0, 2, 1, 0], fingers: [0, 0, 0, 2, 1, 0] },
-  "G9": { frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] },
   "C9": { frets: [-1, 3, 2, 3, 3, 3], fingers: [0, 2, 1, 3, 4, 4] },
+  "C#9": { frets: [-1, 4, 3, 4, 4, 4], fingers: [0, 2, 1, 3, 4, 4], startFret: 3 },
+  "Db9": { frets: [-1, 4, 3, 4, 4, 4], fingers: [0, 2, 1, 3, 4, 4], startFret: 3 },
+  "D9": { frets: [-1, -1, 0, 2, 1, 0], fingers: [0, 0, 0, 2, 1, 0] },
+  "D#9": { frets: [-1, -1, 1, 3, 2, 1], fingers: [0, 0, 1, 3, 2, 1], barreAt: 1 },
+  "Eb9": { frets: [-1, -1, 1, 3, 2, 1], fingers: [0, 0, 1, 3, 2, 1], barreAt: 1 },
+  "E9": { frets: [0, 2, 0, 1, 0, 2], fingers: [0, 2, 0, 1, 0, 3] },
   "F9": { frets: [1, 0, 1, 0, 1, 1], fingers: [1, 0, 2, 0, 3, 4] },
+  "F#9": { frets: [2, 1, 2, 1, 2, 2], fingers: [2, 1, 3, 1, 4, 4], barreAt: 1 },
+  "G9": { frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] },
+  "G#9": { frets: [4, 3, 1, 1, 1, 2], fingers: [4, 3, 1, 1, 1, 2], barreAt: 1, startFret: 3 },
+  "Ab9": { frets: [4, 3, 1, 1, 1, 2], fingers: [4, 3, 1, 1, 1, 2], barreAt: 1, startFret: 3 },
+  "A9": { frets: [-1, 0, 2, 1, 2, 0], fingers: [0, 0, 2, 1, 3, 0] },
+  "A#9": { frets: [-1, 1, 0, 1, 1, 1], fingers: [0, 1, 0, 2, 3, 4] },
+  "Bb9": { frets: [-1, 1, 0, 1, 1, 1], fingers: [0, 1, 0, 2, 3, 4] },
   "B9": { frets: [-1, 2, 1, 2, 2, 2], fingers: [0, 2, 1, 3, 3, 3] },
   
   // Minor 9th chords
@@ -799,11 +808,22 @@ export const UKULELE_CHORDS = {
   
   // 9th chords
   "C9": { frets: [0, 2, 0, 1], fingers: [0, 2, 0, 1] },
-  "G9": { frets: [2, 2, 1, 2], fingers: [2, 3, 1, 4] },
-  "A9": { frets: [0, 1, 0, 2], fingers: [0, 1, 0, 2] },
+  "C#9": { frets: [1, 3, 1, 2], fingers: [1, 3, 1, 2], barreAt: 1 },
+  "Db9": { frets: [1, 3, 1, 2], fingers: [1, 3, 1, 2], barreAt: 1 },
   "D9": { frets: [2, 4, 2, 3], fingers: [1, 3, 1, 2] },
+  "D#9": { frets: [3, 5, 3, 4], fingers: [1, 3, 1, 2], startFret: 3 },
+  "Eb9": { frets: [3, 5, 3, 4], fingers: [1, 3, 1, 2], startFret: 3 },
   "E9": { frets: [1, 2, 2, 2], fingers: [1, 2, 3, 4] },
   "F9": { frets: [0, 0, 1, 0], fingers: [0, 0, 1, 0] },
+  "F#9": { frets: [1, 1, 2, 1], fingers: [1, 1, 3, 1], barreAt: 1 },
+  "Gb9": { frets: [1, 1, 2, 1], fingers: [1, 1, 3, 1], barreAt: 1 },
+  "G9": { frets: [2, 2, 1, 2], fingers: [2, 3, 1, 4] },
+  "G#9": { frets: [3, 3, 2, 3], fingers: [2, 3, 1, 4], startFret: 3 },
+  "Ab9": { frets: [3, 3, 2, 3], fingers: [2, 3, 1, 4], startFret: 3 },
+  "A9": { frets: [0, 1, 0, 2], fingers: [0, 1, 0, 2] },
+  "A#9": { frets: [1, 2, 1, 3], fingers: [1, 2, 1, 4], barreAt: 1 },
+  "Bb9": { frets: [1, 2, 1, 3], fingers: [1, 2, 1, 4], barreAt: 1 },
+  "B9": { frets: [2, 3, 2, 4], fingers: [1, 2, 1, 4], barreAt: 2, startFret: 2 },
   
   // Minor 9th chords
   "Am9": { frets: [2, 0, 0, 0], fingers: [1, 0, 0, 0] },
@@ -1181,11 +1201,21 @@ export const PIANO_CHORDS = {
   
   // 9th chords (dominant 9th)
   "C9": { notes: ["C", "E", "G", "Bb", "D"], semitones: [0, 4, 7, 10, 14] },
-  "G9": { notes: ["G", "B", "D", "F", "A"], semitones: [0, 4, 7, 10, 14] },
-  "A9": { notes: ["A", "C#", "E", "G", "B"], semitones: [0, 4, 7, 10, 14] },
+  "C#9": { notes: ["C#", "F", "G#", "B", "D#"], semitones: [0, 4, 7, 10, 14] },
+  "Db9": { notes: ["Db", "F", "Ab", "B", "Eb"], semitones: [0, 4, 7, 10, 14] },
   "D9": { notes: ["D", "F#", "A", "C", "E"], semitones: [0, 4, 7, 10, 14] },
+  "D#9": { notes: ["D#", "G", "A#", "C#", "F"], semitones: [0, 4, 7, 10, 14] },
+  "Eb9": { notes: ["Eb", "G", "Bb", "Db", "F"], semitones: [0, 4, 7, 10, 14] },
   "E9": { notes: ["E", "G#", "B", "D", "F#"], semitones: [0, 4, 7, 10, 14] },
   "F9": { notes: ["F", "A", "C", "Eb", "G"], semitones: [0, 4, 7, 10, 14] },
+  "F#9": { notes: ["F#", "A#", "C#", "E", "G#"], semitones: [0, 4, 7, 10, 14] },
+  "Gb9": { notes: ["Gb", "Bb", "Db", "E", "Ab"], semitones: [0, 4, 7, 10, 14] },
+  "G9": { notes: ["G", "B", "D", "F", "A"], semitones: [0, 4, 7, 10, 14] },
+  "G#9": { notes: ["G#", "C", "D#", "F#", "A#"], semitones: [0, 4, 7, 10, 14] },
+  "Ab9": { notes: ["Ab", "C", "Eb", "Gb", "Bb"], semitones: [0, 4, 7, 10, 14] },
+  "A9": { notes: ["A", "C#", "E", "G", "B"], semitones: [0, 4, 7, 10, 14] },
+  "A#9": { notes: ["A#", "D", "F", "G#", "C"], semitones: [0, 4, 7, 10, 14] },
+  "Bb9": { notes: ["Bb", "D", "F", "Ab", "C"], semitones: [0, 4, 7, 10, 14] },
   "B9": { notes: ["B", "D#", "F#", "A", "C#"], semitones: [0, 4, 7, 10, 14] },
   
   // Minor 9th chords
@@ -1800,11 +1830,22 @@ export const CAVAQUINHO_CHORDS = {
   
   // 9th chords
   "C9": { frets: [3, 1, 2, 2], fingers: [4, 1, 2, 3] },
-  "G9": { frets: [0, 1, 2, 3], fingers: [0, 1, 2, 4] },
-  "A9": { frets: [2, 0, 3, 2], fingers: [1, 0, 3, 2] },
+  "C#9": { frets: [4, 2, 3, 3], fingers: [4, 1, 2, 3], startFret: 3 },
+  "Db9": { frets: [4, 2, 3, 3], fingers: [4, 1, 2, 3], startFret: 3 },
   "D9": { frets: [2, 2, 2, 2], fingers: [1, 1, 1, 1], barreAt: 2, startFret: 2 },
+  "D#9": { frets: [3, 3, 3, 3], fingers: [1, 1, 1, 1], barreAt: 3, startFret: 3 },
+  "Eb9": { frets: [3, 3, 3, 3], fingers: [1, 1, 1, 1], barreAt: 3, startFret: 3 },
   "E9": { frets: [1, 2, 0, 0], fingers: [1, 2, 0, 0] },
   "F9": { frets: [2, 1, 2, 0], fingers: [2, 1, 3, 0] },
+  "F#9": { frets: [3, 2, 3, 1], fingers: [3, 2, 4, 1], startFret: 2 },
+  "Gb9": { frets: [3, 2, 3, 1], fingers: [3, 2, 4, 1], startFret: 2 },
+  "G9": { frets: [0, 1, 2, 3], fingers: [0, 1, 2, 4] },
+  "G#9": { frets: [1, 2, 3, 4], fingers: [1, 2, 3, 4], startFret: 3 },
+  "Ab9": { frets: [1, 2, 3, 4], fingers: [1, 2, 3, 4], startFret: 3 },
+  "A9": { frets: [2, 0, 3, 2], fingers: [1, 0, 3, 2] },
+  "A#9": { frets: [3, 1, 4, 3], fingers: [2, 1, 4, 3], startFret: 2 },
+  "Bb9": { frets: [3, 1, 4, 3], fingers: [2, 1, 4, 3], startFret: 2 },
+  "B9": { frets: [4, 2, 5, 4], fingers: [2, 1, 4, 3], startFret: 3 },
   
   // Minor 9th chords
   "Am9": { frets: [2, 0, 4, 0], fingers: [1, 0, 3, 0] },

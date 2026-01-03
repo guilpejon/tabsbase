@@ -2,7 +2,7 @@
 <% has_chords = tab_has_chords?(@tab.content, @tab) %>
 <% has_lyrics = @tab.source == "cifra_club" ? @tab.song.lyrics.present? : has_significant_lyrics?(@tab.content) %>
 <% is_chord_tab = @tab.tab_type == "chords" %>
-<div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5" data-controller="<%= 'singer-mode' if has_lyrics %><%= ' chord-diagram' if has_chords %><%= ' transpose' if has_chords %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-chord-diagram-tab-instrument-value="<%= @tab.instrument %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-singer-mode-lyrics="<%= @tab.song.lyrics %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-transpose-has-key-value="<%= @tab.key.present? %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
+<div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5" data-controller="autoscroll<%= ' singer-mode' if has_lyrics %><%= ' chord-diagram' if has_chords %><%= ' transpose' if has_chords %>" data-autoscroll-song-duration-value="<%= @tab.song.duration || 0 %>" data-chord-diagram-chords-value="<%= unique_chords.to_json %>" data-chord-diagram-tab-instrument-value="<%= @tab.instrument %>" data-singer-mode-chord-tab-value="<%= is_chord_tab %>" data-singer-mode-lyrics="<%= @tab.song.lyrics %>" data-transpose-original-chords-value="<%= unique_chords.to_json %>" data-transpose-has-key-value="<%= @tab.key.present? %>" data-action="transpose:transposed->chord-diagram#handleTranspose">
   <div class="mb-6">
     <nav class="text-sm text-slate-500 mb-3">
       <%= link_to "Home", root_path, class: "hover:text-slate-900" %>
@@ -71,15 +71,88 @@
         <%# Singer Mode Toggle Button - for chord tabs OR CifraClub tabs with lyrics %>
         <% if @tab.tab_type == "chords" || (@tab.source == "cifra_club" && @tab.song.lyrics.present?) %>
         <button type="button"
-                class="h-10 px-3 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                class="h-10 px-2 sm:px-3 text-sm font-medium rounded-md border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
                 data-singer-mode-target="toggleButton"
                 data-action="click->singer-mode#toggle"
                 title="Lyrics Mode - Hide chords & tabs">
-          <span class="flex items-center gap-1.5">
+          <span class="flex items-center gap-1 sm:gap-1.5">
             <span class="inline">Lyrics</span>
           </span>
         </button>
         <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# Auto-scroll Controls - Collapsible Section %>
+  <div class="mb-4"
+       data-controller="autoscroll"
+       data-autoscroll-song-duration-value="<%= @tab.song.duration || 0 %>">
+    <div class="rounded-lg border border-slate-200 bg-white">
+      <%# Header with collapse toggle %>
+      <div class="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors"
+           data-action="click->autoscroll#toggleSection"
+           data-autoscroll-target="header">
+        <div class="flex items-center gap-3">
+          <h2 class="font-semibold text-slate-900">Auto-scroll</h2>
+          <svg class="w-5 h-5 text-slate-400 transition-transform"
+               data-autoscroll-target="arrow"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </div>
+      </div>
+
+      <%# Auto-scroll Controls - Hidden by default %>
+      <div class="hidden border-t border-slate-200" data-autoscroll-target="content">
+        <div class="px-4 py-3">
+          <%# Single row layout - compact on mobile, more spacing on desktop %>
+          <div class="flex flex-row items-center gap-2 sm:gap-3">
+            <%# Play/Pause Button - icon only on mobile, text on desktop %>
+            <button type="button"
+                    class="flex items-center justify-center sm:gap-2 w-9 h-9 sm:w-auto sm:px-4 sm:py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors sm:font-medium shrink-0"
+                    data-autoscroll-target="playButton"
+                    data-action="click->autoscroll#togglePlay">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5" data-autoscroll-target="playIcon" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+              </svg>
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 hidden" data-autoscroll-target="pauseIcon" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z"/>
+              </svg>
+              <span class="hidden sm:inline" data-autoscroll-target="playText">Auto-scroll</span>
+            </button>
+
+            <span class="hidden sm:inline text-sm font-medium text-slate-700 whitespace-nowrap">Speed:</span>
+
+            <button type="button"
+                    class="w-8 h-8 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+                    data-action="click->autoscroll#decreaseSpeed"
+                    title="Decrease speed">
+              −
+            </button>
+
+            <input type="range"
+                   min="0.5"
+                   max="3.0"
+                   step="0.25"
+                   value="1.0"
+                   class="flex-1"
+                   data-autoscroll-target="speedSlider"
+                   data-action="input->autoscroll#adjustSpeed">
+
+            <button type="button"
+                    class="w-8 h-8 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+                    data-action="click->autoscroll#increaseSpeed"
+                    title="Increase speed">
+              +
+            </button>
+
+            <span class="text-sm font-semibold text-slate-900 min-w-[3rem] text-center shrink-0"
+                  data-autoscroll-target="speedDisplay">
+              1.0x
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -246,23 +246,36 @@ export default class extends Controller {
     lines.forEach((line, index) => {
       const trimmed = line.trim()
 
+      // Check if this line is a section marker (e.g., [Verso], [Refrão], [Intro], etc.)
+      const isSectionMarker = /^\s*\[/.test(trimmed)
+
       if (trimmed === '') {
         // Empty line - end current paragraph
         if (currentParagraph.length > 0) {
           paragraphs.push(currentParagraph)
           currentParagraph = []
         }
+      } else if (isSectionMarker) {
+        // Section marker - end current paragraph and start new one with the marker
+        if (currentParagraph.length > 0) {
+          paragraphs.push(currentParagraph)
+          currentParagraph = []
+        }
+        currentParagraph.push(line)
       } else {
         currentParagraph.push(line)
 
-        // Start a new paragraph every 4-6 lines for better readability
-        if (currentParagraph.length >= 4 && lines[index + 1] && lines[index + 1].trim() !== '') {
-          // Check if next line continues the same thought (doesn't start with capital or bracket)
-          const nextLine = lines[index + 1].trim()
-          if (!nextLine.match(/^[A-Z[]/)) {
-            paragraphs.push(currentParagraph)
-            currentParagraph = []
-          }
+        // Auto-create paragraph breaks every 4-6 lines to separate verses
+        // This helps when lyrics don't have empty lines between verses (existing data)
+        const shouldBreak = currentParagraph.length >= 4 && (
+          currentParagraph.length >= 6 ||  // Always break at 6 lines
+          !lines[index + 1] ||              // At the end
+          /^\s*\[/.test((lines[index + 1] || '').trim())  // Next line is a section marker
+        )
+
+        if (shouldBreak) {
+          paragraphs.push(currentParagraph)
+          currentParagraph = []
         }
       }
     })
