@@ -442,6 +442,7 @@ export const GUITAR_CHORDS = {
   // Major aliases (for compatibility)
   "Cmaj": { frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] },
   "AM": { frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0] },
+  "C#M": { frets: [-1, 4, 6, 6, 6, 4], fingers: [0, 1, 3, 3, 3, 1], barreAt: 4, startFret: 4 },
   "CM7": { frets: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0] },
   "CM7/G": { frets: [3, 3, 2, 0, 0, 0], fingers: [2, 3, 1, 0, 0, 0] },
   "BbM7": { frets: [-1, 1, 3, 2, 3, 1], fingers: [0, 1, 3, 2, 4, 1], barreAt: 1 },
@@ -1418,6 +1419,7 @@ export const PIANO_CHORDS = {
   // Major aliases (for compatibility)
   "Cmaj": { notes: ["C", "E", "G"], semitones: [0, 4, 7] },
   "AM": { notes: ["A", "C#", "E"], semitones: [0, 4, 7] },
+  "C#M": { notes: ["C#", "F", "G#"], semitones: [0, 4, 7] },
   "CM7": { notes: ["C", "E", "G", "B"], semitones: [0, 4, 7, 11] },
   "CM7/G": { notes: ["G", "B", "C", "E"], semitones: [0, 4, 5, 9] },
   "BbM7": { notes: ["Bb", "D", "F", "A"], semitones: [0, 4, 7, 11] },

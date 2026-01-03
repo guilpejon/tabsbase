@@ -71,6 +71,11 @@ namespace :db do
       puts ""
       system(import_cmd) || abort("\n✗ Import failed")
       puts "✓ Import finished"
+
+      # Cleanup remote file
+      cleanup_cmd = "ssh #{REMOTE_USER}@#{REMOTE_HOST} 'rm #{REMOTE_FILE}'"
+      system(cleanup_cmd)
+      puts "✓ Cleaned up remote file"
     end
 
     desc "Push local scraper data to production (export + scp + import)"
