@@ -1408,12 +1408,25 @@ module CifraClub
         # Skip elements that are too large (likely contain whole page)
         next if element.text.length > 10000
 
-        # Extract text content, preserving line breaks
-        element.css("br").each { |br| br.replace("\n") }
-        content = element.text.strip
+        # Extract text content, preserving line breaks and paragraph structure
+        # First, let's get the raw inner HTML and process it more carefully
+        html_content = element.inner_html
+
+        # Replace <br> tags with newlines
+        html_content = html_content.gsub(/<br\s*\/?>/i, "\n")
+
+        # Replace paragraph and div tags with double newlines to separate stanzas
+        html_content = html_content.gsub(/<\/p>/i, "\n\n")
+        html_content = html_content.gsub(/<\/div>/i, "\n\n")
+
+        # Remove all other HTML tags
+        html_content = html_content.gsub(/<[^>]+>/, "")
+
+        # Decode HTML entities
+        content = decode_html_entities(html_content).strip
 
         # Skip if content looks like HTML/CSS (contains curly braces, @media, etc.)
-        next if content.match?(/[{}@]/) || content.match?(/position:\s*absolute/)
+        next if content.include?("{") || content.include?("@") || content.include?("position: absolute")
 
         # Skip if content is too short (likely not actual lyrics)
         next if content.length < 50
@@ -1424,7 +1437,7 @@ module CifraClub
 
         # Check if most lines start with capital letters or are short (verse markers)
         lyric_like_lines = lines.count do |line|
-          line.match?(/^[A-Z]/) || line.length <= 3 || line.match?(/^\[.*\]$/)
+          line.start_with?(/[A-Z]/) || line.length <= 3 || (line.start_with?("[") && line.end_with?("]"))
         end
         next unless lyric_like_lines >= lines.length * 0.6 # At least 60% look like lyrics
 
@@ -1433,10 +1446,10 @@ module CifraClub
         filtered_lines = []
         lines.each do |line|
           # Stop if we encounter clear Portuguese translation indicators
-          break if line.match?(/^\(?Estou\b/i)  # "I'm tired" in Portuguese
-          break if line.match?(/^\(?Cansado\b/i)  # "Tired" in Portuguese
-          break if line.match?(/^\(?Sentindo\b/i)  # "Feeling" in Portuguese
-          break if line.match?(/^\[?Tradução\]?\s*$/i)  # Translation header
+          break if line.downcase.start_with?("estou")  # "I'm tired" in Portuguese
+          break if line.downcase.start_with?("cansado")  # "Tired" in Portuguese
+          break if line.downcase.start_with?("sentindo")  # "Feeling" in Portuguese
+          break if line.downcase.include?("tradução")  # Translation header
 
           filtered_lines << line
         end
