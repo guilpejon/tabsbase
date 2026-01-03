@@ -1,0 +1,25 @@
+<div class="mb-12">
+  <h2 class="text-2xl font-semibold mb-4">Top Songs</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <% @top_tabs.each do |tab| %>
+      <%= link_to tab_path(artist_slug: tab.artist.slug, slug: tab.slug),
+          class: "flex flex-col gap-2 p-4 bg-white hover:bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors" do %>
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <h3 class="font-semibold text-slate-900 truncate"><%= tab.song.title %></h3>
+            <p class="text-sm text-slate-600 truncate"><%= tab.artist.name %></p>
+          </div>
+          <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium shrink-0">
+            <%= tab.instrument.titleize %>
+          </span>
+        </div>
+        <div class="flex items-center justify-between text-xs text-slate-500">
+          <span><%= number_with_delimiter(tab.views_count) %> views</span>
+          <% if tab.rating.present? %>
+            <span>★ <%= tab.rating.round(1) %></span>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

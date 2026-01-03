@@ -1,0 +1,12 @@
+<div class="mb-12">
+  <h2 class="text-2xl font-semibold mb-4">Browse by Instrument</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <% @instrument_counts.sort.each do |instrument, count| %>
+      <%= link_to root_path(instrument: instrument),
+          class: "flex flex-col items-center gap-2 p-6 bg-white hover:bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors" do %>
+        <span class="text-lg font-semibold text-slate-900"><%= instrument.titleize %></span>
+        <span class="text-sm text-slate-500"><%= number_with_delimiter(count) %> tabs</span>
+      <% end %>
+    <% end %>
+  </div>
+</div>

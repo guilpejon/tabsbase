@@ -4,8 +4,9 @@ class HomeController < ApplicationController
     @instrument = params[:instrument].to_s.strip.presence
     @tab_type = params[:tab_type].to_s.strip.presence
     @version = params[:version].to_s.strip.presence
+    @difficulty = params[:difficulty].to_s.strip.presence
 
-    @has_active_search = @query.present? || @instrument.present? || @tab_type.present? || @version.present?
+    @has_active_search = @query.present? || @instrument.present? || @tab_type.present? || @version.present? || @difficulty.present?
 
     if @has_active_search
       tabs = Tab
@@ -27,6 +28,12 @@ class HomeController < ApplicationController
         tabs = tabs.where(version_name: @version)
       end
 
+      # Filter by difficulty if selected
+      if @difficulty.present?
+        difficulty_variations = HomeHelper::DIFFICULTY_VARIATIONS[@difficulty] || []
+        tabs = tabs.where(difficulty: difficulty_variations)
+      end
+
       if @query.present?
         # Use PostgreSQL unaccent for efficient accent-insensitive search
         normalized_query = "%#{normalize_for_search(@query)}%"
@@ -46,18 +53,26 @@ class HomeController < ApplicationController
       # Group tabs by artist for display (always group when there's an active search)
       @grouped_tabs = @tabs.group_by(&:artist)
     else
-      # No active search - show top 20 artists by combined views and tab count
+      # No active search - show popular content and navigation options
+      @top_tabs = Tab
+        .includes(:tuning, song: :artist)
+        .order(views_count: :desc)
+        .limit(20)
+
+      @instrument_counts = Tab.group(:instrument).count
+
       @top_artists = Artist
         .joins(:tabs)
         .group("artists.id")
         .select("artists.*, COUNT(tabs.id) AS tabs_count, SUM(tabs.views_count) AS total_views")
         .order("total_views DESC, tabs_count DESC")
-        .limit(20)
+        .limit(12)
     end
 
     # Get available options for filters
     @instruments = Tab.distinct.pluck(:instrument).compact.sort
     @tab_types = Tab.distinct.pluck(:tab_type).compact.sort
     @versions = Tab.distinct.pluck(:version_name).compact.sort
+    @difficulties = HomeHelper::DIFFICULTY_VARIATIONS.keys
   end
 end

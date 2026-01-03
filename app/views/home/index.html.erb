@@ -1,115 +1,12 @@
 <div class="w-full pb-16 max-w-6xl mx-auto px-4 sm:px-5">
-  <div class="mb-12 text-center">
-    <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900">Find your favorite tabs</h1>
-    <p class="text-lg sm:text-xl text-slate-500 mt-4 max-w-xl mx-auto">Search guitar, ukulele, and bass tabs by artist or song title.</p>
-
-    <%= form_with url: root_path, method: :get, local: true, class: "mt-8 max-w-xl mx-auto" do |f| %>
-      <div class="flex gap-3">
-        <%= f.search_field :q,
-          value: @query,
-          placeholder: "e.g. Radiohead, Wonderwall…",
-          class: "flex-1 rounded-md border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %>
-
-        <%= f.submit "Search",
-          class: "rounded-md bg-slate-900 px-6 py-2 text-white hover:bg-slate-800" %>
-      </div>
-
-      <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <%= f.select :instrument,
-          options_for_select([["All instruments", ""]] + @instruments.map { |i| [i.titleize, i] }, @instrument),
-          {},
-          class: "w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400 bg-white" %>
-
-        <%= f.select :tab_type,
-          options_for_select([["All types", ""]] + @tab_types.map { |t| [t.titleize, t] }, @tab_type),
-          {},
-          class: "w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400 bg-white" %>
-
-        <%= f.select :version,
-          options_for_select([["All versions", ""]] + @versions.map { |v| [v, v] }, @version),
-          {},
-          class: "col-span-2 sm:col-span-1 w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400 bg-white" %>
-      </div>
-    <% end %>
-  </div>
+  <%= render 'hero_search' %>
 
   <% if @has_active_search %>
-    <div class="flex items-baseline justify-between gap-4 mb-3">
-      <h2 class="text-lg font-medium">Results</h2>
-      <p class="text-sm text-slate-600">
-        <%= number_with_delimiter(@pagy.count) %> tabs
-        <% if @pagy.pages > 1 %>
-          • Page <%= @pagy.page %> of <%= @pagy.pages %>
-        <% end %>
-      </p>
-    </div>
-
-    <div class="space-y-6">
-      <% if @tabs&.any? %>
-        <% @grouped_tabs.each do |artist, artist_tabs| %>
-          <div class="bg-white sm:rounded-lg sm:border sm:border-slate-200 overflow-hidden">
-            <!-- Artist Header -->
-            <div class="px-4 py-3 sm:px-6 sm:py-4 bg-slate-50 border-b border-slate-200">
-              <%= link_to artist_path(artist),
-                  class: "text-lg font-semibold text-slate-900 hover:text-slate-700 hover:underline" do %>
-                <%= artist.name %>
-              <% end %>
-              <span class="text-sm text-slate-500 ml-2">
-                (<%= artist_tabs.size %> tab<%= artist_tabs.size == 1 ? '' : 's' %>)
-              </span>
-            </div>
-
-            <!-- Artist's Songs -->
-            <div class="divide-y divide-slate-200">
-              <% artist_tabs.each do |tab| %>
-                <div class="px-4 py-3 sm:px-6 sm:py-4 hover:bg-slate-50">
-                  <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                      <%= link_to tab_path(artist_slug: tab.artist.slug, slug: tab.slug, q: @query, instrument: @instrument, tab_type: @tab_type, version: @version),
-                          class: "font-medium text-slate-900 hover:text-slate-700 hover:underline block" do %>
-                        <%= tab.song.title %>
-                      <% end %>
-                    </div>
-                    <div class="flex items-center gap-2 text-sm text-slate-500 shrink-0">
-                      <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium">
-                        <%= tab.instrument.titleize %>
-                      </span>
-                      <% if tab.tab_type.present? && tab.tab_type != 'chords' %>
-                        <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium">
-                          <%= tab.tab_type_version %>
-                        </span>
-                      <% end %>
-                    </div>
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      <% else %>
-        <div class="bg-white sm:rounded-lg sm:border sm:border-slate-200 p-6 text-slate-600">
-          No tabs found. Try a different search.
-        </div>
-      <% end %>
-    </div>
-
-    <% if @pagy.pages > 1 %>
-      <div class="mt-6 flex justify-center">
-        <%= pagy_tailwind_nav(@pagy) %>
-      </div>
-    <% end %>
+    <%= render 'search_results' %>
   <% else %>
-    <div>
-      <h2 class="text-lg font-medium mb-3">Top Artists</h2>
-      <div class="divide-y divide-slate-200 sm:divide-y-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-3">
-        <% @top_artists.each do |artist| %>
-          <%= link_to artist_path(artist),
-              class: "flex items-center justify-between gap-4 px-4 py-3 bg-white hover:bg-slate-50 sm:rounded-lg sm:border sm:border-slate-200 sm:hover:border-slate-300 transition-colors" do %>
-            <span class="font-medium text-slate-900"><%= artist.name %></span>
-            <span class="text-sm text-slate-500 shrink-0"><%= artist.tabs_count %> tabs</span>
-          <% end %>
-        <% end %>
-      </div>
-    </div>
+    <%= render 'top_songs' %>
+    <%= render 'browse_instruments' %>
+    <%= render 'browse_difficulty' %>
+    <%= render 'top_artists' %>
   <% end %>
 </div>

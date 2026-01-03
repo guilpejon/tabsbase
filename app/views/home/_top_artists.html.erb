@@ -1,0 +1,12 @@
+<div class="mb-12">
+  <h2 class="text-2xl font-semibold mb-4">Top Artists</h2>
+  <div class="divide-y divide-slate-200 sm:divide-y-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-3">
+    <% @top_artists.each do |artist| %>
+      <%= link_to artist_path(artist),
+          class: "flex items-center justify-between gap-4 px-4 py-3 bg-white hover:bg-slate-50 sm:rounded-lg sm:border sm:border-slate-200 sm:hover:border-slate-300 transition-colors" do %>
+        <span class="font-medium text-slate-900"><%= artist.name %></span>
+        <span class="text-sm text-slate-500 shrink-0"><%= artist.tabs_count %> tabs</span>
+      <% end %>
+    <% end %>
+  </div>
+</div>
