@@ -68,6 +68,10 @@ module UltimateGuitar
     end
 
     def import!(url)
+      # Check if tab already exists with this source_url
+      existing_tab = Tab.find_by(source_url: url)
+      return existing_tab if existing_tab
+
       payload = scrape(url)
 
       artist_name = payload[:artist_name]
