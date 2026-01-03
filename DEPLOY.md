@@ -56,6 +56,21 @@ bin/rails db:sync:push
 ```bash
 bin/kamal logs          # View logs
 bin/kamal console       # Rails console
+bin/kamal shell         # Bash shell in container
+bin/kamal dbc           # Database console
 bin/kamal app restart   # Restart app
+bin/kamal app exec "command"  # Execute any command
+```
+
+## Debugging on Raspberry Pi
+
+SSH directly to the Pi for low-level debugging:
+
+```bash
+ssh guilpejon@raspberrypi.local
+
+# Access container directly
+docker exec -it tabsbase-web-<hash> bash
+docker logs -f tabsbase-web-<hash>
 ```
 
