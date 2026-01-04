@@ -30,8 +30,7 @@ class HomeController < ApplicationController
 
       # Filter by difficulty if selected
       if @difficulty.present?
-        difficulty_variations = HomeHelper::DIFFICULTY_VARIATIONS[@difficulty] || []
-        tabs = tabs.where(difficulty: difficulty_variations)
+        tabs = tabs.where(difficulty: @difficulty)
       end
 
       if @query.present?
@@ -73,6 +72,6 @@ class HomeController < ApplicationController
     @instruments = Tab.distinct.pluck(:instrument).compact.sort
     @tab_types = Tab.distinct.pluck(:tab_type).compact.sort
     @versions = Tab.distinct.pluck(:version_name).compact.sort
-    @difficulties = HomeHelper::DIFFICULTY_VARIATIONS.keys
+    @difficulties = [ "beginner", "intermediate", "advanced" ]
   end
 end

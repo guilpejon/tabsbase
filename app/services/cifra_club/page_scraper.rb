@@ -865,7 +865,7 @@ module CifraClub
       # Check URL for version indicators and map to known difficulties
       url = doc.at_css("link[rel='canonical']")&.attr("href") || ""
       if url.include?("simplificada")
-        return "Iniciante"
+        return normalize_difficulty("Iniciante")
       end
 
       # Look for difficulty in the HTML structure
@@ -876,7 +876,7 @@ module CifraClub
         difficulty_span = current_version_link.at_css("span:nth-child(2)")
         if difficulty_span
           difficulty = difficulty_span.text&.strip
-          return difficulty if difficulty.present? && difficulty.match?(/^(Iniciante|Básico|Intermediário|Avançado|Expert)$/i)
+          return normalize_difficulty(difficulty) if difficulty.present? && difficulty.match?(/^(Iniciante|Básico|Intermediário|Avançado|Expert)$/i)
         end
       end
 
@@ -889,10 +889,31 @@ module CifraClub
 
       difficulty_patterns.each do |pattern|
         match = content.match(pattern)
-        return match[1].strip if match
+        return normalize_difficulty(match[1].strip) if match
       end
 
       nil
+    end
+
+    def normalize_difficulty(difficulty)
+      return nil if difficulty.nil?
+
+      # Ensure proper UTF-8 encoding
+      normalized = difficulty.strip.force_encoding("UTF-8").scrub
+
+      case normalized.downcase
+      when "iniciante", "básico", "absolute beginner"
+        "beginner"
+      when "intermediário"
+        "intermediate"
+      when "avançado", "expert"
+        "advanced"
+      when "beginner", "intermediate", "advanced"
+        # Already normalized
+        normalized
+      else
+        nil
+      end
     end
 
     def extract_rating(doc)
