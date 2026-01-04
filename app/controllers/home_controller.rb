@@ -43,7 +43,8 @@ class HomeController < ApplicationController
 
         tabs = tabs.order("artists.name ASC, songs.title ASC, tabs.instrument ASC, tabs.created_at DESC")
       else
-        tabs = tabs.order("tabs.created_at DESC")
+        # For filtered searches without text query, order by popularity first, then recency
+        tabs = tabs.order("tabs.views_count DESC, tabs.created_at DESC")
       end
 
       # Pagy v43 API: pagy(:offset, collection)
