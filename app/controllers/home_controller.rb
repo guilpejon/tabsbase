@@ -6,6 +6,9 @@ class HomeController < ApplicationController
     @version = params[:version].to_s.strip.presence
     @difficulty = params[:difficulty].to_s.strip.presence
 
+    # Define difficulties array early since it's used in calculations below
+    @difficulties = [ "beginner", "intermediate", "advanced" ]
+
     @has_active_search = @query.present? || @instrument.present? || @tab_type.present? || @version.present? || @difficulty.present?
 
     if @has_active_search
@@ -75,6 +78,5 @@ class HomeController < ApplicationController
     @instruments = Tab.distinct.pluck(:instrument).compact.sort
     @tab_types = Tab.distinct.pluck(:tab_type).compact.sort
     @versions = Tab.distinct.pluck(:version_name).compact.sort
-    @difficulties = [ "beginner", "intermediate", "advanced" ]
   end
 end
