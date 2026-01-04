@@ -60,6 +60,8 @@ class HomeController < ApplicationController
 
       @instrument_counts = Tab.group(:instrument).count
 
+      @difficulty_counts = Tab.group(:difficulty).count.slice(*@difficulties).transform_values { |v| v || 0 }
+
       @top_artists = Artist
         .joins(:tabs)
         .group("artists.id")
