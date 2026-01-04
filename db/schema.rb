@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_03_201305) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_04_000307) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "unaccent"
@@ -192,7 +192,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_201305) do
     t.string "version_name"
     t.integer "views_count", default: 0
     t.string "youtube_lesson_url"
-    t.string "youtube_music_url"
     t.index ["instrument"], name: "index_tabs_on_instrument"
     t.index ["slug"], name: "index_tabs_on_slug", unique: true
     t.index ["song_id", "instrument"], name: "index_tabs_on_song_id_and_instrument"
