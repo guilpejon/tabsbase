@@ -199,8 +199,6 @@ module CifraClub
               difficulty: tab_attrs[:difficulty],
               capo: tab_attrs[:capo],
               key: tab_attrs[:key],
-              rating: tab_attrs[:rating],
-              rating_count: tab_attrs[:rating_count],
               views_count: tab_attrs[:views_count],
               version_name: tab_attrs[:version_name],
               youtube_lesson_url: instrument == "guitar" ? tab_attrs[:youtube_lesson_url] : nil
@@ -209,23 +207,21 @@ module CifraClub
           return existing_tab
         end
 
-        tab = Tab.new(
-          song: song,
-          tuning: tuning,
-          instrument: instrument,
-          tab_type: tab_attrs[:tab_type],
-          content: tab_attrs[:content],
-          difficulty: tab_attrs[:difficulty],
-          capo: tab_attrs[:capo],
-          key: tab_attrs[:key],
-          rating: tab_attrs[:rating],
-          rating_count: tab_attrs[:rating_count],
-          views_count: tab_attrs[:views_count],
-          version_name: tab_attrs[:version_name],
-          youtube_lesson_url: instrument == "guitar" ? tab_attrs[:youtube_lesson_url] : nil,
-          source_url: url,
-          source: "cifra_club"
-        )
+          tab = Tab.new(
+            song: song,
+            tuning: tuning,
+            instrument: instrument,
+            tab_type: tab_attrs[:tab_type],
+            content: tab_attrs[:content],
+            difficulty: tab_attrs[:difficulty],
+            capo: tab_attrs[:capo],
+            key: tab_attrs[:key],
+            views_count: tab_attrs[:views_count],
+            version_name: tab_attrs[:version_name],
+            youtube_lesson_url: instrument == "guitar" ? tab_attrs[:youtube_lesson_url] : nil,
+            source_url: url,
+            source: "cifra_club"
+          )
 
         tab.save!
 
@@ -506,34 +502,79 @@ module CifraClub
     end
 
     def extract_key(doc)
-      # Look for key information in the page content
-      # Cifra Club often shows "tom: Em" or similar
+      # Look for key information in various page elements
       key_selectors = [
         "[data-key]",
+        "[data-tom]",
         ".key",
         ".tom",
-        "#cifra_tom"
+        "#cifra_tom",
+        ".cifra-tom",
+        ".tonality",
+        ".song-key",
+        ".key-info"
       ]
 
       key_selectors.each do |selector|
         element = doc.at_css(selector)
         next unless element
 
-        text = element.attr("data-key") || element.text
-        # Extract key from patterns like "tom: Em", "Key: Em", "tom: Ebm (forma dos acordes no tom de Dm)", etc.
-        match = text&.match(/(?:tom|key)[:\s]+([A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*)/i)
-        key = match[1].strip if match
-        # Only return if it's a valid chord/key (at least 2 characters or has minor/major indicator)
-        return key if key && (key.length >= 2 || key.match?(/[A-G][#b]?[m]/i))
+        text = element.attr("data-key") || element.attr("data-tom") || element.text
+        key = extract_key_from_text(text)
+        return key if key
       end
 
-      # Fallback: try to extract from content
+      # Look for key in page metadata/script data
+      script_content = doc.css("script").map(&:text).join
+      if script_content =~ /(?:tom|key|tonality)[":\s]+([A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*)/i
+        key = extract_key_from_text($1)
+        return key if key
+      end
+
+      # Search the entire page text for key patterns
+      page_text = doc.text
+      key_patterns = [
+        /(?:tom|key|tonality)[:\s]+([A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*)/i,
+        /no\s+tom\s+de[:\s]+([A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*)/i,
+        /tom[:\s]+([A-G][#b]?(?:m|maj|min|dim|aug|sus|add)?\d*)/i
+      ]
+
+      key_patterns.each do |pattern|
+        match = page_text.match(pattern)
+        if match
+          key = extract_key_from_text(match[1])
+          return key if key
+        end
+      end
+
+      # Fallback: try to extract from tab content
       content = extract_tab_content(doc)
       if content
         # Look for patterns like "tom: Em" or "Key: Em" in the content
-        match = content.match(/(?:tom|key)[:\s]+([A-G]#?(?:m|maj|min|dim|aug|sus|add)?\d*)/i)
-        return match[1].strip if match && match[1].length > 1  # Avoid single letters
+        match = content.match(/(?:tom|key|tonality)[:\s]+([A-G]#?(?:m|maj|min|dim|aug|sus|add)?\d*)/i)
+        key = extract_key_from_text(match[1]) if match
+        return key if key
       end
+
+      nil
+    end
+
+    def extract_key_from_text(text)
+      return nil if text.nil? || text.empty?
+
+      # Clean the text
+      key = text.strip
+
+      # Handle common abbreviations (case insensitive)
+      key = case key.downcase
+      when "major", "maj" then "C"  # Default to C major if just "major"
+      when "minor", "min" then "Am"  # Default to A minor if just "minor"
+      else key
+      end
+
+      # Validate it's a proper musical key format
+      # Allow: C, C#, Cb, Cm, Cmaj, Cmin, etc.
+      return key if key.match?(/^[A-G][#b]?[m]?(?:maj|min|dim|aug|sus|add)?\d*$/i)
 
       nil
     end
@@ -586,8 +627,6 @@ module CifraClub
         difficulty: extract_difficulty(doc),
         capo: capo,
         key: key,
-        rating: extract_rating(doc),
-        rating_count: extract_rating_count(doc),
         views_count: extract_views_count(doc),
         version_name: extract_version_name(doc, url),
         source_url: url,
@@ -763,15 +802,27 @@ module CifraClub
       "guitar"  # Default for Cifra Club
     end
 
-    # Analyze tab content to determine actual instrument (content-first detection)
-    # Prioritizes content analysis over URL-based detection to avoid misclassification
+    # Analyze tab content to determine actual instrument
+    # Prioritizes URL-based detection for explicit instrument indicators, then content analysis
     def analyze_content_for_instrument(content, url)
-      # First priority: explicit instrument detection from content
+      # First priority: URL-based detection for explicit instrument indicators
+      # These are reliable and should override content analysis
+      if url.include?("baixo") || url.include?("bass")
+        Rails.logger.info "[CifraClub] URL indicates bass tab: #{url}"
+        return "bass"
+      end
+
+      if url.include?("bateria") || url.include?("drum")
+        Rails.logger.info "[CifraClub] URL indicates drum tab: #{url}"
+        return "drums"
+      end
+
+      # Second priority: explicit instrument detection from content
       return "guitar" if has_guitar_notation?(content)
       return "bass" if has_bass_notation?(content)
       return "drums" if has_drum_notation?(content)
 
-      # Second priority: check for mixed content (guitar + bass strings)
+      # Third priority: check for mixed content (guitar + bass strings)
       # If we have both guitar and bass strings, it's likely guitar with bass notation
       has_guitar_strings = content.match?(/^[eEBGDAE]\s*[\|\:]/)
       has_bass_strings = content.match?(/^[GDAE]\s*[\|\:]/)
@@ -781,7 +832,7 @@ module CifraClub
         return "guitar"
       end
 
-      # Third priority: check for chord-only content (likely guitar)
+      # Fourth priority: check for chord-only content (likely guitar)
       has_chords_only = content.match?(/[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|7M|7|9|11|13)/) &&
                        !content.match?(/^[eEBGDAE]\s*[\|\:]/) &&
                        !content.match?(/^[GDAE]\s*[\|\:]/)
@@ -791,15 +842,10 @@ module CifraClub
         return "guitar"
       end
 
-      # Last resort: URL-based detection with warning
+      # Last resort: URL-based detection for less explicit cases
       instrument = determine_instrument(url)
 
-      # Special warning for bass/guitar classification based on URL
-      if %w[bass guitar].include?(instrument)
-        Rails.logger.warn "[CifraClub] ⚠️  URL-based instrument detection may be unreliable for #{instrument} tabs. Consider manual review: #{url}"
-      else
-        Rails.logger.warn "[CifraClub] Using URL-based instrument detection for #{url}: #{instrument}"
-      end
+      Rails.logger.warn "[CifraClub] Using fallback URL-based instrument detection for #{url}: #{instrument}"
 
       instrument
     end
@@ -916,53 +962,11 @@ module CifraClub
       end
     end
 
-    def extract_rating(doc)
-      # Look for user ratings
-      rating_selectors = [
-        ".rating",
-        ".estrelas",
-        "[data-rating]"
-      ]
-
-      rating_selectors.each do |selector|
-        element = doc.at_css(selector)
-        next unless element
-
-        # Extract numeric rating
-        rating_text = element.attr("data-rating") || element.text
-        rating = rating_text&.to_f
-        return rating if rating && rating > 0
-      end
-
-      nil
-    end
-
-    def extract_rating_count(doc)
-      # Look for number of ratings/votes
-      selectors = [
-        ".rating-count",
-        ".votes",
-        "[data-rating-count]"
-      ]
-
-      selectors.each do |selector|
-        element = doc.at_css(selector)
-        next unless element
-
-        count = element.attr("data-rating-count") || element.text
-        integer = count&.to_i
-        return integer if integer && integer > 0
-      end
-
-      nil
-    end
 
     def extract_views_count(doc)
-      # Look for view count
+      # Look for view count in various formats
       selectors = [
-        ".views",
-        ".visualizacoes",
-        "[data-views]"
+        ".containerExibitions .exib"
       ]
 
       selectors.each do |selector|
@@ -970,10 +974,32 @@ module CifraClub
         next unless element
 
         count = element.attr("data-views") || element.text
-        integer = count&.to_i
+        integer = parse_view_count(count)
         return integer if integer && integer > 0
       end
 
+      # Fallback: search for "exibições" pattern in the entire page content
+      content = doc.text
+      if content =~ /(\d{1,3}(?:\.\d{3})*)\s*exibições?/i
+        integer = parse_view_count($1)
+        return integer if integer && integer > 0
+      end
+
+      nil
+    end
+
+    def parse_view_count(count_text)
+      return nil if count_text.nil? || count_text.empty?
+
+      # Remove any non-numeric characters except dots (thousands separators)
+      # and convert dots to empty strings for Brazilian number format
+      cleaned = count_text.strip
+                    .gsub(/[^\d.]/, "")  # Keep only digits and dots
+                    .gsub(".", "")       # Remove thousands separators
+
+      integer = cleaned.to_i
+      integer > 0 ? integer : nil
+    rescue
       nil
     end
 
